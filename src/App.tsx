@@ -749,6 +749,7 @@ type ConfirmOptions = {
   description: string
   confirmLabel?: string
   tone?: "danger" | "warning"
+  icon?: IconName | null
 }
 
 function useConfirmCard() {
@@ -784,6 +785,7 @@ function ConfirmCard({
   description,
   confirmLabel = "Ya, lanjutkan",
   tone = "danger",
+  icon,
   onCancel,
   onConfirm,
 }: ConfirmOptions & { onCancel: () => void; onConfirm: () => void }) {
@@ -816,11 +818,11 @@ function ConfirmCard({
         role="alertdialog"
       >
         <div className="flex items-start gap-4">
-          <div
+          {icon !== null && <div
             className={`grid size-12 shrink-0 place-items-center rounded-2xl ${danger ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}
           >
-            <Icon name={danger ? "x" : "shield"} size={21} />
-          </div>
+            <Icon name={icon ?? (danger ? "x" : "shield")} size={21} />
+          </div>}
           <div className="min-w-0 pt-0.5">
             <h2 className="font-display text-lg font-bold tracking-tight text-slate-900" id={titleId}>
               {title}
@@ -4005,6 +4007,7 @@ function MataKuliahPage({
       title: "Hapus mata kuliah?",
       description: `Mata kuliah ${mk.kode_mk} · ${mk.nama_mk} akan dihapus dari referensi sistem. Data ini mungkin masih dipakai oleh soal atau jadwal ujian.`,
       confirmLabel: "Hapus mata kuliah",
+      icon: null,
     })
     if (!confirmed) return
     setBusyId(mk.id)
@@ -4341,30 +4344,45 @@ function MyQuestionsPage({
               </button>
             </div>
             <p className="mt-4 rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
-              Soal yang sudah dikunci hanya bisa diubah lewat revisi. Unggah
-              berkas PDF versi terbaru beserta alasan, lalu tunggu persetujuan
-              Kaprodi.
+              Ajukan revisi untuk soal milik Anda yang sudah dikunci atau disetujui. Satu pengajuan per soal dapat menunggu keputusan pada satu waktu. Jika ditolak, Anda dapat memperbaiki dan mengajukan kembali. Tidak ada batas waktu pengajuan, tetapi perubahan baru berlaku setelah disetujui Kaprodi.
             </p>
             <label className="mt-5 block text-xs font-bold text-slate-600">
               Alasan revisi
               <textarea
+                required
                 className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
                 onChange={(event) => setAlasanRevisi(event.target.value)}
                 placeholder="cth: Perbaikan typo nomor 12 dan 17"
                 rows={3}
+                minLength={20}
+                maxLength={1000}
                 value={alasanRevisi}
               />
+              <span className="mt-1 block text-right text-[11px] font-normal text-slate-400">{alasanRevisi.trim().length}/1000 · minimal 20 karakter</span>
             </label>
             <label className="mt-4 block text-xs font-bold text-slate-600">
               Berkas PDF revisi
             </label>
             <label className="mt-2 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-6 text-center transition hover:border-emerald-400">
               <input
-                accept=".pdf"
+                accept="application/pdf,.pdf"
                 className="hidden"
-                onChange={(event) =>
-                  setFileRevisi(event.target.files?.[0] ?? null)
-                }
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null
+                  if (file && file.size > 10 * 1024 * 1024) {
+                    showToast("Ukuran PDF maksimal 10 MB.")
+                    event.target.value = ""
+                    setFileRevisi(null)
+                    return
+                  }
+                  if (file && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+                    showToast("Berkas revisi harus berformat PDF.")
+                    event.target.value = ""
+                    setFileRevisi(null)
+                    return
+                  }
+                  setFileRevisi(file)
+                }}
                 type="file"
               />
               <div className="grid size-10 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">
@@ -4374,7 +4392,7 @@ function MyQuestionsPage({
                 {fileRevisi?.name || "Klik untuk pilih berkas PDF"}
               </div>
               <div className="mt-1 text-xs text-slate-400">
-                Maksimal 10 MB · Hanya format PDF
+                Maksimal 10 MB · PDF saja · tunggu keputusan sebelum mengirim revisi berikutnya
               </div>
             </label>
             <div className="mt-6 flex gap-3">
@@ -4388,10 +4406,12 @@ function MyQuestionsPage({
               </button>
               <button
                 className="flex-1 rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white disabled:opacity-50"
-                disabled={kirimRevisi}
+                disabled={kirimRevisi || alasanRevisi.trim().length < 20 || !fileRevisi}
                 onClick={async () => {
                   if (!alasanRevisi.trim())
                     return showToast("Alasan revisi wajib diisi.")
+                  if (alasanRevisi.trim().length < 20)
+                    return showToast("Jelaskan perubahan minimal 20 karakter agar Kaprodi dapat menilainya.")
                   if (!fileRevisi)
                     return showToast("Pilih berkas PDF revisi terlebih dahulu.")
                   setKirimRevisi(true)
@@ -5348,12 +5368,19 @@ function AppShell() {
   const [newPassword, setNewPassword] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<File>()
   const [profileSaving, setProfileSaving] = useState(false)
+  const [clockNow, setClockNow] = useState(() => new Date())
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifs, setNotifs] = useState<Notifikasi[]>([])
   const [unread, setUnread] = useState(0)
+  const notifSessionRef = useRef(0)
 
   useEffect(() => {
     enableNotificationSounds()
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setClockNow(new Date()), 1000)
+    return () => window.clearInterval(timer)
   }, [])
 
   useEffect(() => {
@@ -5368,16 +5395,18 @@ function AppShell() {
   // Muat notifikasi milik pengguna login; polling ringan tiap 30 detik agar
   // lonceng ikut diperbarui tanpa reload.
   useEffect(() => {
+    const sessionVersion = ++notifSessionRef.current
+    setNotifs([])
+    setUnread(0)
+    setNotifOpen(false)
     if (!loggedIn) {
-      setNotifs([])
-      setUnread(0)
       return
     }
     let active = true
     const load = () => {
       fetchNotifikasi()
         .then((result) => {
-          if (!active) return
+          if (!active || sessionVersion !== notifSessionRef.current) return
           setNotifs(result.items)
           setUnread(result.unreadCount)
         })
@@ -5391,11 +5420,13 @@ function AppShell() {
       active = false
       window.clearInterval(timer)
     }
-  }, [loggedIn])
+  }, [currentUser?.id])
 
   const refreshNotifs = () => {
+    const sessionVersion = notifSessionRef.current
     fetchNotifikasi()
       .then((result) => {
+        if (sessionVersion !== notifSessionRef.current) return
         setNotifs(result.items)
         setUnread(result.unreadCount)
       })
@@ -5409,7 +5440,7 @@ function AppShell() {
     const onUpdate = () => refreshNotifs()
     window.addEventListener("ebrankas:notif-updated", onUpdate)
     return () => window.removeEventListener("ebrankas:notif-updated", onUpdate)
-  }, [loggedIn])
+  }, [currentUser?.id])
 
   const openNotif = async () => {
     const willOpen = !notifOpen
@@ -5577,6 +5608,11 @@ function AppShell() {
             </p>
           </div>
           <div className="ml-auto flex items-center gap-3">
+            <time dateTime={clockNow.toISOString()} aria-label={`Waktu sekarang ${new Intl.DateTimeFormat("id-ID", { dateStyle: "full", timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(clockNow)} WIB`} className="flex items-center gap-1.5 rounded-full border border-black/5 bg-white px-2.5 py-2.5 text-[10px] font-semibold tabular-nums text-slate-600 shadow-sm sm:gap-2 sm:px-3.5 sm:text-xs">
+              <Icon name="clock" size={15} />
+              <span className="sm:hidden">{new Intl.DateTimeFormat("id-ID", { timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(clockNow)} WIB</span>
+              <span className="hidden sm:inline">{new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeStyle: "medium", timeZone: "Asia/Jakarta" }).format(clockNow)} WIB</span>
+            </time>
             <button
               className="hidden items-center gap-2 rounded-full bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-sm hover:bg-slate-50 sm:flex"
               onClick={() => setHelpOpen(true)}

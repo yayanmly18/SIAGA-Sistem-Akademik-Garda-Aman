@@ -22,14 +22,17 @@ class RevisiController extends Controller
     public function store(Request $request, int $id): JsonResponse
     {
         $data = $request->validate([
-            'alasan_revisi' => ['required', 'string', 'max:1000'],
+            'alasan_revisi' => ['required', 'string', 'min:20', 'max:1000'],
             'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
         ]);
 
-        $soal = BankSoal::findOrFail($id);
-
-        // Pastikan hanya pemilik soal yang boleh mengajukan revisi.
-        abort_unless($soal->user_id === $request->user()->id, 403, 'Hanya dosen pemilik soal yang dapat mengajukan revisi.');
+        $soal = BankSoal::where('user_id', $request->user()->id)->findOrFail($id);
+        if (! in_array($soal->status, ['terkunci', 'siap_ujian', 'ditolak'], true)) {
+            return response()->json(['message' => 'Revisi hanya dapat diajukan untuk soal yang sudah dikunci atau disetujui dan belum diarsipkan.'], 422);
+        }
+        if (RevisiSoal::where('bank_soal_id', $soal->id)->where('status', 'menunggu')->exists()) {
+            return response()->json(['message' => 'Masih ada pengajuan revisi yang menunggu keputusan Kaprodi untuk soal ini. Tunggu sampai diputuskan sebelum mengajukan lagi.'], 422);
+        }
 
         $stored = $this->files->storeEncrypted($request->file('file'));
 
