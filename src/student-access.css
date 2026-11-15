@@ -3,15 +3,24 @@
   --student-green: #14766a;
   --student-lime: #d9ef83;
   --student-line: #dce7e1;
-  width: min(1100px, 100%);
+  width: 100%;
+  max-width: none;
   min-height: 100vh;
-  margin: auto;
+  margin: 0;
   padding: clamp(16px, 3vw, 32px);
   background:
     radial-gradient(ellipse at 100% 0%, rgb(216 238 222 / 68%), transparent 30rem),
     #f2f6f3;
   color: #203b34;
   font: 16px/1.5 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.student-shell-viewer {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: clamp(14px, 2.2vw, 32px);
+  background: #f2f6f3;
 }
 
 .student-brand {
@@ -73,18 +82,53 @@
   box-shadow: 0 12px 32px rgb(25 60 49 / 5%);
 }
 
+.student-shell-viewer .pdf-shell {
+  width: 100%;
+  margin: 0;
+  padding: clamp(14px, 1.8vw, 26px);
+  border-radius: 16px;
+}
+
 .exam-card p,
 .verify-card p {
   color: #64766f;
   line-height: 1.6;
 }
 
+.exam-card > .status-ready,
+.exam-card > .status-wait {
+  margin: 22px 0 0;
+}
+
 .exam-meta {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+  gap: 12px;
+  margin: 20px 0 0;
+}
+
+.exam-meta > div {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #e5ede8;
+  border-radius: 12px;
+  background: #f8faf8;
+}
+
+.exam-meta dt {
+  margin-bottom: 3px;
+  color: #697b73;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.exam-meta dd {
+  margin: 0;
   color: #52685f;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 650;
 }
 
 .exam-meta > * {
@@ -108,19 +152,76 @@
   color: #805414 !important;
 }
 
-.verify-card form {
-  margin-top: 15px;
+.verify-card > p {
+  margin: 0;
+}
+
+.verify-intro {
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid #dcebe1;
+  border-radius: 14px;
+  background: #f3f8f4;
+}
+
+.verify-intro p {
+  margin: 4px 0 0;
+  color: #52685f;
+  font-size: 14px;
+}
+
+.verify-step {
+  display: inline-block;
+  color: #14766a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.verify-step-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #e1e9e4;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.verify-step-card-next {
+  margin-top: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  background: #fbfcfb;
+}
+
+.verify-step-card-next > .verify-step {
+  grid-column: 1 / -1;
+}
+
+.verify-step-card-next label {
+  grid-row: 2;
+}
+
+.verify-step-card-next input,
+.verify-step-card-next button {
+  grid-row: 3;
 }
 
 .verify-card label {
+  grid-column: 1 / -1;
   display: block;
-  margin: 12px 0 6px;
+  margin: 0;
   color: var(--student-ink);
   font-size: 13px;
   font-weight: 700;
 }
 
 .verify-card input {
+  grid-column: 1;
+  grid-row: 2;
   width: 100%;
   min-height: 46px;
   padding: 12px;
@@ -150,6 +251,17 @@
   cursor: pointer;
   touch-action: manipulation;
   transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.verify-step-card button {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 46px;
+}
+
+.verify-card .student-notice,
+.verify-card .student-error {
+  margin: 14px 0 0;
 }
 
 .verify-card button:hover,
@@ -193,26 +305,116 @@
 
 .pdf-toolbar {
   display: grid;
-  gap: 10px;
-  padding-bottom: 14px;
+  gap: 16px;
+  padding-bottom: 18px;
   color: #35564d;
+}
+
+.pdf-session-info,
+.pdf-status,
+.pdf-actions,
+.pdf-control-group {
+  display: flex;
+  align-items: center;
+}
+
+.pdf-session-info {
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #e2ebe5;
+  border-radius: 14px;
+  background: #f8faf8;
+}
+
+.pdf-student {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  column-gap: 10px;
+  color: #52685f;
+  font-size: 13px;
+}
+
+.pdf-student strong {
+  color: var(--student-ink);
+  font-size: 15px;
+}
+
+.pdf-eyebrow {
+  grid-column: 1 / -1;
+  color: #75867e;
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.pdf-status {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
   font-size: 12px;
   font-weight: 700;
 }
 
-.pdf-actions {
-  display: flex;
-  flex-wrap: wrap;
+.pdf-time,
+.pdf-warning {
+  min-height: 36px;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  padding: 7px 11px;
+  border-radius: 10px;
 }
 
-.pdf-actions span {
-  padding: 0 4px;
+.pdf-time {
+  background: #eaf5ed;
+  color: #245d43;
+}
+
+.pdf-warning {
+  background: #fff4df;
+  color: #805414;
+}
+
+.pdf-actions {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pdf-control-group {
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #e2ebe5;
+  border-radius: 13px;
+  background: #fff;
 }
 
 .pdf-actions button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border-radius: 9px;
   font-size: 12px;
+}
+
+.pdf-control-value {
+  min-width: max-content;
+  padding: 0 8px;
+  color: #425c51;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pdf-actions .pdf-close {
+  border-color: #9a3832;
+  background: #9a3832;
+}
+
+.pdf-actions .pdf-close:hover {
+  background: #7f2925;
 }
 
 .pdf-viewport {
@@ -225,6 +427,21 @@
   padding: 14px;
   border-radius: 14px;
   background: #e5ece7;
+}
+
+.pdf-page-caption {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  margin: 0;
+  padding: 5px 10px;
+  border: 1px solid #dfe8e2;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 94%);
+  color: #425c51;
+  font-size: 11px;
+  font-weight: 700;
+  transform: translateX(-50%);
 }
 
 .pdf-page-wrap {
@@ -268,13 +485,60 @@
     padding: 14px;
   }
 
+  .student-shell-viewer {
+    padding: 10px;
+  }
+
   .pdf-viewport {
     min-height: 55vh;
     padding: 8px;
   }
 
+  .verify-step-card,
+  .verify-step-card-next {
+    grid-template-columns: 1fr;
+  }
+
+  .verify-step-card input,
+  .verify-step-card button {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .verify-step-card-next label {
+    grid-row: auto;
+  }
+
+  .verify-step-card button {
+    width: 100%;
+  }
+
   .pdf-actions {
-    gap: 6px;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .pdf-session-info {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .pdf-status {
+    justify-content: flex-start;
+  }
+
+  .pdf-control-group {
+    flex: 1 1 100%;
+    justify-content: center;
+  }
+
+  .pdf-view-actions {
+    flex: 1 1 100%;
+  }
+
+  .pdf-view-actions button {
+    flex: 1;
   }
 
   .pdf-actions button {

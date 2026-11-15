@@ -7,6 +7,7 @@ use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -22,6 +23,7 @@ class UserController extends Controller
             'email' => $u->email,
             'role' => $u->role,
             'is_active' => $u->is_active,
+            'photo_url' => $u->profile_photo_path ? url(Storage::url($u->profile_photo_path)) : null,
             'last_login_at' => optional($u->last_login_at)->format('d M Y H:i'),
         ]);
 

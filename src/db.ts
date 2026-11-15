@@ -47,6 +47,7 @@ export interface User {
   role: UserRole
 
   aktif: boolean
+  photoUrl?: string | null
 }
 
 // b. Tabel `mata_kuliah`
@@ -419,6 +420,7 @@ interface ApiUser {
   role: string
 
   is_active: boolean
+  photo_url?: string | null
 }
 
 // BankSoalController::transform() — dipakai /soal-saya dan /soal (create)
@@ -506,6 +508,7 @@ export function toUiUser(api: ApiUser): User {
     role: toUiRole(api.role),
 
     aktif: Boolean(api.is_active),
+    photoUrl: api.photo_url ?? null,
   }
 }
 
@@ -2068,6 +2071,19 @@ export async function updateUser(
     }),
   })
   return toUiUser(res.data)
+}
+
+export async function updateMyProfile(input: { nama: string; currentPassword?: string; newPassword?: string; photo?: File }): Promise<User> {
+  const body = new FormData()
+  body.set("nama", input.nama)
+  if (input.currentPassword) body.set("current_password", input.currentPassword)
+  if (input.newPassword) {
+    body.set("new_password", input.newPassword)
+    body.set("new_password_confirmation", input.newPassword)
+  }
+  if (input.photo) body.set("photo", input.photo)
+  const res = await apiFetch<{ user: ApiUser }>("/profile", { method: "POST", body })
+  return toUiUser(res.user)
 }
 
 // ============================================================================

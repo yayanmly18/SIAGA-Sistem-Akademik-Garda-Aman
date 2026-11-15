@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth & profil
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/profile', [AuthController::class, 'updateProfile']);
 
     // Dashboard (semua peran, isi disesuaikan)
     Route::get('/dashboard', [DashboardController::class, 'index']);

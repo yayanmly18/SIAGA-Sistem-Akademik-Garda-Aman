@@ -249,25 +249,26 @@ export default function StudentAccess({ token }: Props) {
   }
 
   return (
-    <main className="student-shell">
+    <main className={`student-shell${pdf ? " student-shell-viewer" : ""}`}>
       <header className="student-brand"><span className="student-mark">S</span><span><b>SIKASA</b><small>Sistem Informasi Keamanan Soal Akademik · FEB</small></span></header>
       <h1>Akses Soal Ujian</h1>
       {loadingExam && <section aria-label="Memuat informasi sesi" role="status" className="animate-pulse rounded-[18px] border border-slate-200 bg-white p-5"><div className="h-5 w-2/5 rounded bg-slate-200"/><div className="mt-3 h-4 w-3/5 rounded bg-slate-200"/><div className="mt-5 grid gap-3 sm:grid-cols-2">{[0, 1, 2, 3, 4, 5].map((item) => <div className="h-4 rounded bg-slate-100" key={item}/>)}</div><div className="mt-5 h-10 rounded-lg bg-slate-100"/></section>}
       {exam && <section className="exam-card">
         <h2>{exam.nama_ujian}</h2>
         <p>{exam.nama_mk ?? "Mata kuliah"} · {exam.kode_mk ?? "-"}</p>
-        <div className="exam-meta"><span>Dosen: {exam.dosen ?? "-"}</span><span>Kelas: {exam.kelas ?? "-"}</span><span>Program studi: {exam.program_studi ?? "-"}</span><span>Semester: {exam.semester ?? "-"} · {exam.tahun_ajaran ?? "-"}</span><span>Mulai: {new Date(exam.waktu_mulai).toLocaleString("id-ID")}</span><span>Selesai: {new Date(exam.waktu_selesai).toLocaleString("id-ID")}</span></div>
+        <dl className="exam-meta"><div><dt>Dosen</dt><dd>{exam.dosen ?? "-"}</dd></div><div><dt>Kelas</dt><dd>{exam.kelas ?? "-"}</dd></div><div><dt>Program studi</dt><dd>{exam.program_studi ?? "-"}</dd></div><div><dt>Semester</dt><dd>{exam.semester ?? "-"} · {exam.tahun_ajaran ?? "-"}</dd></div><div><dt>Mulai</dt><dd>{new Date(exam.waktu_mulai).toLocaleString("id-ID")}</dd></div><div><dt>Selesai</dt><dd>{new Date(exam.waktu_selesai).toLocaleString("id-ID")}</dd></div></dl>
         {!pdf && <p className={canVerify ? "status-ready" : "status-wait"}>{canVerify ? "Sesi aktif. Verifikasi identitas untuk membaca soal." : exam.pesan_status || `Status sesi: ${exam.status}`}</p>}
       </section>}
       {accessLocked && <section role="alert" className="rounded-[18px] border border-rose-200 bg-rose-50 p-5 text-rose-900"><h2>Akses soal dikunci</h2><p className="mt-2 text-sm leading-relaxed">Halaman soal terdeteksi ditinggalkan sebanyak tiga kali. Hubungi Panitia di ruang ujian untuk pemeriksaan. Panitia akan meminta bantuan Admin IT; setelah dibuka, kamu perlu verifikasi OTP kembali.</p></section>}
       {exam && !canVerify && !pdf && <button className="student-refresh" onClick={() => void refreshStatus()} disabled={loadingExam}>{loadingExam ? "Memeriksa..." : "Perbarui status sesi"}</button>}
       {exam && canVerify && !pdf && !accessLocked && <section className="verify-card">
-        <p>Gunakan NIM yang terdaftar. Kode OTP dikirim ke email pada roster sesi. Jawaban tetap dikerjakan pada lembar kertas.</p>
-        <form onSubmit={requestCode}>
+        <div className="verify-intro"><span className="verify-step">Langkah 1 dari 2</span><p>Masukkan NIM yang terdaftar. Kode verifikasi akan dikirim ke email kampus pada roster sesi.</p></div>
+        <form className="verify-step-card" onSubmit={requestCode}>
           <label htmlFor="student-nim">NIM</label><input id="student-nim" required maxLength={40} inputMode="numeric" autoComplete="username" value={nim} onChange={(e) => setNim(e.target.value)} />
           <button disabled={loading}>{loading ? "Memproses..." : "Kirim kode ke email terdaftar"}</button>
         </form>
-        {otpSent && <form onSubmit={verifyAndOpen}>
+        {otpSent && <form className="verify-step-card verify-step-card-next" onSubmit={verifyAndOpen}>
+          <span className="verify-step">Langkah 2 dari 2</span>
           <label htmlFor="student-otp">Kode OTP 6 digit</label><input id="student-otp" required pattern="[0-9]{6}" maxLength={6} inputMode="numeric" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value)} />
           <button disabled={loading}>{loading ? "Memverifikasi..." : "Verifikasi dan buka soal"}</button>
         </form>}
@@ -277,17 +278,20 @@ export default function StudentAccess({ token }: Props) {
       {student && loading && !pdf && <section aria-label="Memuat dokumen soal" role="status" className="animate-pulse rounded-[18px] border border-slate-200 bg-white p-5"><div className="flex flex-wrap gap-3"><div className="h-8 w-36 rounded-lg bg-slate-200"/><div className="h-8 w-28 rounded-lg bg-slate-100"/><div className="h-8 w-24 rounded-lg bg-slate-100"/></div><div className="mt-5 grid min-h-[55vh] place-items-center rounded-lg bg-slate-100 p-6"><div className="h-[45vh] w-full max-w-2xl rounded bg-white shadow-sm"/></div></section>}
       {pdf && <section className="pdf-shell">
         <div className="pdf-toolbar">
-          <span>{student?.nama} · NIM {student?.nim}</span><span>{remaining}</span><span className="rounded-lg bg-amber-50 px-2 py-1 text-amber-800">Peringatan perpindahan tab: {violationCount}/3</span>
+          <div className="pdf-session-info">
+            <div className="pdf-student"><span className="pdf-eyebrow">Peserta ujian</span><strong>{student?.nama}</strong><span>NIM {student?.nim}</span></div>
+            <div className="pdf-status"><span className="pdf-time">{remaining}</span><span className="pdf-warning">Peringatan perpindahan tab <strong>{violationCount}/3</strong></span></div>
+          </div>
           <div className="pdf-actions">
-            <button disabled={page <= 1} onClick={() => setPage((n) => Math.max(1, n - 1))}>‹ Halaman</button><span>{page} / {pdf.numPages}</span><button disabled={page >= pdf.numPages} onClick={() => setPage((n) => Math.min(pdf.numPages, n + 1))}>Berikutnya ›</button>
-            <button disabled={zoom <= 0.7} onClick={() => setZoom((n) => Math.max(0.7, Math.round((n - 0.1) * 10) / 10))}>−</button><span>{Math.round(zoom * 100)}%</span><button disabled={zoom >= 2} onClick={() => setZoom((n) => Math.min(2, Math.round((n + 0.1) * 10) / 10))}>+</button>
-            <button onClick={() => containerRef.current?.requestFullscreen?.()}>Layar penuh</button>
-            <button onClick={leaveViewer}>Tutup soal</button>
+            <div className="pdf-control-group" aria-label="Navigasi halaman"><button disabled={page <= 1} aria-label="Halaman sebelumnya" onClick={() => setPage((n) => Math.max(1, n - 1))}>‹ Sebelumnya</button><span className="pdf-control-value">Halaman {page} / {pdf.numPages}</span><button disabled={page >= pdf.numPages} onClick={() => setPage((n) => Math.min(pdf.numPages, n + 1))}>Berikutnya ›</button></div>
+            <div className="pdf-control-group" aria-label="Ukuran tampilan"><button disabled={zoom <= 0.7} aria-label="Perkecil tampilan" onClick={() => setZoom((n) => Math.max(0.7, Math.round((n - 0.1) * 10) / 10))}>−</button><span className="pdf-control-value">{Math.round(zoom * 100)}%</span><button disabled={zoom >= 2} aria-label="Perbesar tampilan" onClick={() => setZoom((n) => Math.min(2, Math.round((n + 0.1) * 10) / 10))}>+</button></div>
+            <div className="pdf-control-group pdf-view-actions"><button onClick={() => containerRef.current?.requestFullscreen?.()}>Layar penuh</button><button className="pdf-close" onClick={leaveViewer}>Tutup soal</button></div>
           </div>
         </div>
         {notice && <p role="alert" className="student-notice">{notice}</p>}
         <div ref={containerRef} className="pdf-viewport">
           <div className="pdf-page-wrap"><canvas ref={canvasRef} aria-label={`Halaman ${page} dari ${pdf.numPages}`} /><div className="pdf-watermark" aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gridTemplateRows: "repeat(4, minmax(0, 1fr))", transform: "none", opacity: 1, color: "inherit", fontSize: "inherit" }}>{Array.from({ length: 12 }, (_, index) => <span key={index} style={{ color: "rgba(120, 25, 25, 0.30)", fontSize: "clamp(8px, 1.1vw, 12px)", lineHeight: 1.35, fontWeight: 800, transform: "rotate(-27deg)", textShadow: "0 0 3px rgba(255,255,255,.9)", overflowWrap: "anywhere" }}>{student?.nama} · NIM {student?.nim}<br />{exam?.nama_ujian} · {watermarkTime}</span>)}</div></div>
+          <p className="pdf-page-caption">Halaman {page} dari {pdf.numPages}</p>
         </div>
         {error && <p role="alert" className="student-error">{error}</p>}
       </section>}

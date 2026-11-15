@@ -74,6 +74,7 @@ import {
   toggleUser,
   updateMataKuliah,
   updateUser,
+  updateMyProfile,
   type BankSoal,
   type Database,
   type LogRow,
@@ -409,6 +410,7 @@ interface DbContextValue {
     file: File,
   ) => Promise<string>
   refresh: () => Promise<void>
+  updateProfile: (input: { nama: string; currentPassword?: string; newPassword?: string; photo?: File }) => Promise<void>
 }
 
 const DbContext = createContext<DbContextValue | null>(null)
@@ -455,6 +457,39 @@ function DbProvider({ children }: { children: ReactNode }) {
       if (selesaiSplash !== undefined) window.clearTimeout(selesaiSplash)
     }
   }, [])
+
+  // Sinkronkan perubahan yang dilakukan pengguna lain tanpa memuat ulang halaman.
+  // Polling hanya berjalan ketika sesi sudah siap; tab tersembunyi diperbarui
+  // saat kembali aktif agar tidak terus meminta data di latar belakang.
+  useEffect(() => {
+    if (loading) return
+    let active = true
+    let syncing = false
+    const sync = async () => {
+      if (!active || syncing || document.visibilityState === "hidden") return
+      syncing = true
+      try {
+        const latest = await loadDatabase()
+        // /me dapat gagal sementara; loadDatabase mengembalikan database kosong
+        // untuk kasus itu, jadi jangan hapus tampilan yang masih valid.
+        if (active && latest.session.userId) setDb(latest)
+      } catch {
+        // Pertahankan data yang sudah tampil jika jaringan sedang terputus.
+      } finally {
+        syncing = false
+      }
+    }
+    const timer = window.setInterval(() => void sync(), 30_000)
+    const onVisible = () => { if (document.visibilityState === "visible") void sync() }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
+    return () => {
+      active = false
+      window.clearInterval(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+    }
+  }, [loading])
 
   const value = useMemo<DbContextValue>(
     () => ({
@@ -511,6 +546,10 @@ function DbProvider({ children }: { children: ReactNode }) {
       refresh: async () => {
         setDb(await loadDatabase())
       },
+      updateProfile: async (input) => {
+        await updateMyProfile(input)
+        setDb(await loadDatabase())
+      },
     }),
     [db, currentUser, loading],
   )
@@ -526,6 +565,8 @@ function Sidebar({
   onClose,
   onNavigate,
   onLogout,
+  onProfile,
+  photoUrl,
 }: {
   open: boolean
   active: string
@@ -534,6 +575,8 @@ function Sidebar({
   onClose: () => void
   onNavigate: (label: string) => void
   onLogout: () => void
+  onProfile: () => void
+  photoUrl?: string | null
 }) {
   const profile = roleMeta[normalizeRole(role)]
   return (
@@ -632,11 +675,9 @@ function Sidebar({
           </div>
           <button
             className="mt-5 flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-white"
-            onClick={onLogout}
+            onClick={onProfile}
           >
-            <div className="grid size-10 place-items-center rounded-full bg-[#202126] text-sm font-bold text-[#f5cf25]">
-              {initials(userName)}
-            </div>
+            {photoUrl ? <img src={photoUrl} alt="" className="size-10 rounded-full object-cover" /> : <div className="grid size-10 place-items-center rounded-full bg-[#202126] text-sm font-bold text-[#f5cf25]">{initials(userName)}</div>}
             <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{userName}</div>
               <div className="text-[11px] text-slate-400">{profile.label}</div>
@@ -2430,6 +2471,23 @@ function TemplatePage({ showToast }: { showToast: (message: string) => void }) {
   )
 }
 
+function statusBadge(status: string) {
+  const variants: Record<string, { bg: string; text: string; border: string }> = {
+    draft: { bg: "bg-slate-50", text: "text-slate-600", border: "border-slate-200" },
+    scheduled: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+    active: { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200" },
+    suspended: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+    completed: { bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200" },
+    cancelled: { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200" },
+  }
+  const v = variants[status] ?? variants.draft
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${v.border} ${v.bg} ${v.text}`}>
+      {status.charAt(0).toUpperCase() + status.slice(1)}
+    </span>
+  )
+}
+
 function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) {
   const { ask: askConfirm, dialog: confirmDialog } = useConfirmCard()
   const { ask: askPrompt, dialog: promptDialog } = usePromptCard()
@@ -2602,67 +2660,285 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
   }
 
   const idleSoal = soal.filter((item) => !sesi.some((s) => s.bank_soal_id === item.id))
+  const totalSesi = sesi.length
+  const activeSesi = sesi.filter((s) => s.status === "active").length
+  const scheduledSesi = sesi.filter((s) => s.status === "scheduled").length
+  const completedSesi = sesi.filter((s) => s.status === "completed").length
+
   return (
     <>
-    <div className="space-y-5">
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
-        <h2 className="font-display text-lg font-bold text-slate-900">{editingId ? "Ubah Jadwal Sesi" : "Buat Sesi Ujian"}</h2>
-        <p className="mt-1 text-xs text-slate-500">Pilih soal yang sudah disetujui Kaprodi. Mahasiswa membaca soal lewat QR dan tetap menjawab di kertas.</p>
-        <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={submit}>
-          {!editingId && <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Soal disetujui
-            <select className="mt-1 w-full rounded-lg border border-slate-200 p-3" required value={soalId} onChange={(e) => setSoalId(e.target.value)}>
-              <option value="">Pilih soal</option>{idleSoal.map((item) => <option key={item.id} value={item.id}>{item.nama_mk} · {item.kelas} · {item.jenis} · {item.dosen}</option>)}
-            </select>
-          </label>}
-          <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Nama ujian<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" maxLength={200} required value={namaUjian} onChange={(e) => setNamaUjian(e.target.value)} placeholder="Contoh: UTS Semester Ganjil" /></label>
-          <label className="text-xs font-semibold text-slate-600">Program studi<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" maxLength={150} value={programStudi} onChange={(e) => setProgramStudi(e.target.value)} placeholder="Program studi (opsional)" /></label>
-          <label className="text-xs font-semibold text-slate-600">Waktu mulai<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" required min={waktuMinimum} type="datetime-local" value={mulai} onChange={(e) => setMulai(e.target.value)} /><span className="mt-1 block text-[11px] font-normal text-slate-400">Pilih waktu sekarang atau setelahnya.</span></label>
-          <label className="text-xs font-semibold text-slate-600">Waktu selesai<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" required min={mulai || waktuMinimum} type="datetime-local" value={selesai} onChange={(e) => setSelesai(e.target.value)} /></label>
-          {!editingId && <label className="text-xs font-semibold text-slate-600">Status awal<select className="mt-1 w-full rounded-lg border border-slate-200 p-3" value={statusAwal} onChange={(e) => setStatusAwal(e.target.value as "draft" | "scheduled")}><option value="draft">Draft</option><option value="scheduled">Terjadwal</option></select></label>}
-          <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Keterangan<textarea className="mt-1 w-full rounded-lg border border-slate-200 p-3" maxLength={2000} value={keterangan} onChange={(e) => setKeterangan(e.target.value)} /></label>
-          <div className="flex items-end gap-2"><button className="rounded-lg bg-[#202126] px-4 py-3 text-xs font-bold text-white disabled:opacity-50" disabled={busyId !== null || (!editingId && idleSoal.length === 0)}>{busyId !== null ? "Menyimpan..." : editingId ? "Simpan Jadwal" : "Buat Sesi"}</button>{editingId && <button className="rounded-lg border px-4 py-3 text-xs" type="button" onClick={resetForm}>Batal</button>}</div>
+    <div className="space-y-6">
+
+      {/* Page Header */}
+      <section className="rounded-[2rem] border border-black/5 bg-white p-7 sm:p-9 shadow-[0_18px_50px_rgba(32,33,38,0.05)]">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#f5cf25] px-3 py-1.5 text-[10px] font-bold tracking-[0.16em] text-[#202126]">
+              Sesi Ujian Online
+            </div>
+            <h2 className="font-display mt-3 text-2xl font-bold text-slate-900 sm:text-3xl">Distribusi Soal via QR Code</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Kelola jadwal ujian, buat token akses, dan distribusikan QR Code kepada mahasiswa. Jawaban tetap dikerjakan pada lembar kertas.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="text-left">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Sesi</div>
+                <div className="text-sm font-semibold text-slate-800">{totalSesi}</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+              <div className="text-left">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sedang Berlangsung</div>
+                <div className="text-sm font-semibold text-emerald-800">{activeSesi}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Form Section */}
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4 mb-6">
+          <div>
+            <h2 className="font-display text-lg font-bold text-slate-900">{editingId ? "Ubah Jadwal Sesi" : "Buat Sesi Ujian Baru"}</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              {editingId ? "Perbarui detail jadwal sesi ujian yang sudah ada." : "Pilih soal yang sudah disetujui Kaprodi. Mahasiswa membaca soal lewat QR dan tetap menjawab di kertas."}
+            </p>
+          </div>
+          {editingId && (
+            <button type="button" className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" onClick={resetForm}>
+              Batal
+            </button>
+          )}
+        </div>
+        <form className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" onSubmit={submit}>
+          {!editingId && (
+            <label className="sm:col-span-2 flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-600">Soal yang Disetujui</span>
+              <select className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" required value={soalId} onChange={(e) => setSoalId(e.target.value)}>
+                <option value="">Pilih soal disetujui</option>
+                {idleSoal.map((item) => (
+                  <option key={item.id} value={item.id}>{item.nama_mk} · {item.kelas} · {item.jenis} · {item.dosen}</option>
+                ))}
+              </select>
+              {idleSoal.length === 0 && <p className="mt-1 text-[10px] text-rose-600">Tidak ada soal yang tersedia. Tunggu persetujuan Kaprodi.</p>}
+            </label>
+          )}
+          <label className="sm:col-span-2 flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-slate-600">Nama Ujian</span>
+            <input className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" maxLength={200} required value={namaUjian} onChange={(e) => setNamaUjian(e.target.value)} placeholder="Contoh: UTS Semester Ganjil" />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-slate-600">Program Studi</span>
+            <input className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" maxLength={150} value={programStudi} onChange={(e) => setProgramStudi(e.target.value)} placeholder="Program studi (opsional)" />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-slate-600">Waktu Mulai</span>
+            <input className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" required min={waktuMinimum} type="datetime-local" value={mulai} onChange={(e) => setMulai(e.target.value)} />
+            <span className="mt-0.5 block text-[10px] font-normal text-slate-400">Pilih waktu sekarang atau setelahnya.</span>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-slate-600">Waktu Selesai</span>
+            <input className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" required min={mulai || waktuMinimum} type="datetime-local" value={selesai} onChange={(e) => setSelesai(e.target.value)} />
+          </label>
+          {!editingId && (
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-semibold text-slate-600">Status Awal</span>
+              <select className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" value={statusAwal} onChange={(e) => setStatusAwal(e.target.value as "draft" | "scheduled")}>
+                <option value="draft">Draft</option>
+                <option value="scheduled">Terjadwal</option>
+              </select>
+            </label>
+          )}
+          <label className="sm:col-span-2 flex flex-col gap-1.5">
+            <span className="text-xs font-semibold text-slate-600">Keterangan</span>
+            <textarea className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900" maxLength={2000} value={keterangan} onChange={(e) => setKeterangan(e.target.value)} placeholder="Catatan tambahan untuk sesi ini (opsional)" rows={2}></textarea>
+          </label>
+          <div className="sm:col-span-2 flex items-end gap-2">
+            <button className="rounded-lg bg-[#202126] px-5 py-3 text-xs font-bold text-white disabled:opacity-50 disabled:cursor-not-allowed" disabled={busyId !== null || (!editingId && idleSoal.length === 0)}>
+              {busyId !== null ? "Menyimpan..." : editingId ? "Simpan Jadwal" : "Buat Sesi"}
+            </button>
+          </div>
         </form>
       </section>
 
+      {/* Session List Section */}
       <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
-        <div className="border-b border-slate-100 p-5"><h2 className="font-display text-lg font-bold">Daftar Sesi Ujian</h2></div>
-        {loading ? <SessionListSkeleton /> : sesi.length === 0 ? <p className="p-5 text-sm text-slate-400">Belum ada sesi ujian.</p> : <div className="divide-y divide-slate-100">
-          {sesi.map((item) => <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between" key={item.id}>
-            <div className="flex-1">
-              <div className="font-semibold text-slate-800">{item.nama_ujian} · {item.nama_mk} · {item.jenis} · Kelas {item.kelas}</div>
-              <div className="mt-1 text-xs text-slate-500">{item.kode_mk} · {item.dosen} · {item.judul}</div>
-              <div className="mt-1 text-xs text-slate-500">{item.program_studi ? `${item.program_studi} · ` : ""}{item.waktu_mulai} — {item.waktu_selesai} · Status: <b>{item.status}</b> · {item.jumlah_peserta} peserta · {item.jumlah_akses} akses tercatat</div>
-              {item.keterangan && <p className="mt-1 text-xs text-slate-500">{item.keterangan}</p>}
-              {item.catatan_status && <p className="mt-1 text-xs text-amber-700">Catatan status: {item.catatan_status}</p>}
-              {(["draft", "scheduled"].includes(item.status)) && <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs font-bold text-slate-700">Daftar peserta untuk verifikasi OTP</div><p className="mt-1 text-[11px] leading-relaxed text-slate-500">Impor daftar mahasiswa yang boleh membuka soal sesi ini. Isi satu baris untuk setiap mahasiswa dengan NIM, nama, dan email kampus aktif. Kode OTP akan dikirim ke email tersebut. Maksimal 5.000 peserta.</p><div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] text-slate-600"><div>nim,nama,email</div><div>230001,Andi Saputra,andi@kampus.ac.id</div></div><div className="mt-2 flex flex-wrap items-center gap-3"><button type="button" className="text-xs font-semibold text-emerald-700 underline" onClick={downloadRosterTemplate}>Unduh template CSV</button><input aria-label="Impor roster peserta CSV" type="file" accept=".csv,text/csv" className="max-w-full text-xs" disabled={busyId === item.id} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadRoster(item, file); event.currentTarget.value = "" }} />{item.jumlah_peserta > 0 && <button className="text-xs font-semibold text-rose-600 underline" disabled={busyId === item.id} onClick={() => void removeRoster(item)}>Hapus roster</button>}</div><p className="mt-2 text-[10px] text-slate-400">Peserta terdaftar saat ini: {item.jumlah_peserta}. Roster harus dimasukkan sebelum sesi diaktifkan.</p></div>}
-              {item.token && <div className="mt-3 flex flex-wrap items-center gap-4">
-                <button className="rounded-lg border border-slate-200 p-1" title="Perbesar QR" onClick={() => setQrBesar(item.id)}><img className="size-32" src={qrImages[item.id]} alt={`QR ${item.nama_mk}`} /></button>
-                <div className="flex flex-col gap-2 text-xs">
-                  {item.qr_url && <a className="text-emerald-700 underline" href={item.qr_url} rel="noreferrer" target="_blank">Pratinjau halaman akses</a>}
-                  {item.qr_url && <button className="text-left font-semibold text-slate-600 underline" onClick={() => navigator.clipboard.writeText(item.qr_url!).then(() => showToast("Tautan sesi disalin."))}>Salin tautan QR</button>}
-                  <a className="text-slate-600 underline" href={qrImages[item.id]} download={`qr-sesi-${item.id}.png`}>Unduh QR PNG</a>
-                  <button className="text-left text-slate-600 underline" onClick={() => void downloadQrPdf(item)}>Unduh lembar QR PDF</button>
+        <div className="border-b border-slate-100 p-6 sm:p-8">
+          <h2 className="font-display text-lg font-bold text-slate-900">Daftar Sesi Ujian</h2>
+          <p className="mt-1 text-xs text-slate-500">{totalSesi} sesi tersedia · {scheduledSesi} terjadwal · {completedSesi} selesai</p>
+        </div>
+        {loading ? <SessionListSkeleton /> : sesi.length === 0 ? (
+          <div className="p-12 text-center">
+            <div className="grid size-16 mx-auto place-items-center rounded-full bg-slate-100 text-slate-400 mb-3">
+              <svg className="size-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 10H7a2 2 0 00-2 2v10a2 2 0 002 2h9a2 2 0 002-2v-5"/></svg>
+            </div>
+            <h3 className="text-sm font-semibold text-slate-900">Belum ada sesi ujian</h3>
+            <p className="mt-1 text-sm text-slate-500">Buat sesi ujian baru melalui formulir di atas untuk memulai distribusi soal.</p>
+          </div>
+        ) : <div className="divide-y divide-slate-100">
+          {sesi.map((item) => <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-start sm:justify-between" key={item.id}>
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="font-semibold text-slate-800">{item.nama_ujian}</div>
+                    {statusBadge(item.status)}
+                  </div>
+                  <div className="text-xs text-slate-500">{item.nama_mk} · {item.jenis} · Kelas {item.kelas}</div>
+                  <div className="text-xs text-slate-500">{item.kode_mk} · {item.dosen}</div>
+                  <div className="text-xs text-slate-500">
+                    {item.program_studi ? `${item.program_studi} · ` : ""}{item.waktu_mulai} — {item.waktu_selesai}
+                  </div>
+                  <div className="text-xs text-slate-500">{item.jumlah_peserta} peserta · {item.jumlah_akses} akses tercatat</div>
+                  {item.keterangan && <p className="mt-1 text-xs text-slate-500">{item.keterangan}</p>}
+                  {item.catatan_status && <p className="mt-1 text-xs text-amber-700">Catatan status: {item.catatan_status}</p>}
+                  {/* Roster Section */}
+                  {(["draft", "scheduled"].includes(item.status)) && (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-bold text-slate-700">Roster Peserta OTP</span>
+                        <span className="ml-auto text-[10px] font-bold text-slate-400">{item.jumlah_peserta} terdaftar</span>
+                      </div>
+                      <p className="mt-0 text-[10px] leading-relaxed text-slate-500">
+                        Impor daftar mahasiswa yang boleh membuka soal sesi ini. Kode OTP dikirim ke email kampus aktif.
+                      </p>
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <button type="button" className="text-xs font-semibold text-emerald-700 underline hover:text-emerald-800" onClick={downloadRosterTemplate}>
+                          Unduh template CSV
+                        </button>
+                        <input aria-label="Impor roster peserta CSV" type="file" accept=".csv,text/csv" className="max-w-[200px] text-xs" disabled={busyId === item.id} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadRoster(item, file); event.currentTarget.value = "" }} />
+                        {item.jumlah_peserta > 0 && (
+                          <button className="text-xs font-semibold text-rose-600 underline hover:text-rose-700" disabled={busyId === item.id} onClick={() => void removeRoster(item)}>
+                            Hapus roster
+                          </button>
+                        )}
+                      </div>
+                      <p className="mt-2 text-[10px] text-slate-400">Roster harus dimasukkan sebelum sesi diaktifkan.</p>
+                    </div>
+                  )}
+                  {/* QR Section */}
+                  {item.token && (
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="grid size-8 place-items-center rounded-lg bg-emerald-50 text-emerald-700">
+                          <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+                        </div>
+                        <span className="text-xs font-bold text-slate-700">QR Code Akses</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50 transition" title="Perbesar QR Code" onClick={() => setQrBesar(item.id)}>
+                          <img className="size-36 rounded-md border border-slate-100" src={qrImages[item.id]} alt={`QR ${item.nama_mk}`} />
+                        </button>
+                        <div className="flex flex-col gap-2 text-xs min-w-0">
+                          {item.qr_url && (
+                            <a className="text-emerald-700 underline text-xs hover:text-emerald-800" href={item.qr_url} rel="noreferrer" target="_blank">
+                              Pratinjau halaman akses
+                            </a>
+                          )}
+                          {item.qr_url && (
+                            <button className="text-left text-slate-600 underline text-xs hover:text-slate-800" onClick={() => navigator.clipboard.writeText(item.qr_url!).then(() => showToast("Tautan sesi disalin."))}>
+                              Salin tautan QR
+                            </button>
+                          )}
+                          <a className="text-slate-600 underline text-xs hover:text-slate-800" href={qrImages[item.id]} download={`qr-sesi-${item.id}.png`}>
+                            Unduh QR PNG
+                          </a>
+                          <button className="text-left text-slate-600 underline text-xs hover:text-slate-800" onClick={() => void downloadQrPdf(item)}>
+                            Unduh lembar QR PDF
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  {!item.token && (
+                    <p className="mt-3 text-xs text-rose-600 flex items-center gap-1">
+                      <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                      Token QR tidak tersedia. Buat token baru untuk menampilkan QR.
+                    </p>
+                  )}
+            </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2 sm:flex-col sm:w-48">
+                  {(["draft", "scheduled"].includes(item.status)) && (
+                    <button className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" disabled={busyId === item.id || item.jumlah_akses > 0} onClick={() => beginEdit(item)}>
+                      Ubah jadwal
+                    </button>
+                  )}
+                  {item.status === "draft" && (
+                    <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "scheduled")}>
+                      Jadwalkan
+                    </button>
+                  )}
+                  {item.status === "scheduled" && (
+                    <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "active")}>
+                      Mulai sesi
+                    </button>
+                  )}
+                  {item.status === "active" && (
+                    <button className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "suspended")}>
+                      Tangguhkan
+                    </button>
+                  )}
+                  {item.status === "suspended" && (
+                    <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-800 transition" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "active")}>
+                      Lanjutkan sesi
+                    </button>
+                  )}
+                  {(["active", "suspended"].includes(item.status)) && (
+                    <button className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-50 transition" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "completed")}>
+                      Tutup sesi
+                    </button>
+                  )}
+                  {item.status === "active" && (
+                    <button className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" disabled={busyId === item.id} onClick={() => extendSession(item)}>
+                      Perpanjang waktu
+                    </button>
+                  )}
+                  {(["draft", "scheduled"].includes(item.status)) && (
+                    <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "cancelled")}>
+                      Batalkan
+                    </button>
+                  )}
+                  {item.status !== "completed" && item.status !== "cancelled" && item.token && (
+                    <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition" disabled={busyId === item.id} onClick={() => void revokeToken(item)}>
+                      Cabut QR
+                    </button>
+                  )}
+                  {item.status !== "completed" && item.status !== "cancelled" && (
+                    <button className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" disabled={busyId === item.id} onClick={() => void mutate(item.id, () => rotateSesiToken(item.id), "Token baru dibuat. QR lama tidak berlaku.")}>
+                      {item.token ? "Rotasi token" : "Buat token QR"}
+                    </button>
+                  )}
+                  {(["draft", "scheduled", "cancelled"].includes(item.status)) && item.jumlah_akses === 0 && (
+                    <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition" disabled={busyId === item.id} onClick={() => void removeSession(item)}>
+                      Hapus
+                    </button>
+                  )}
                 </div>
-              </div>}
-              {!item.token && <p className="mt-3 text-xs text-amber-700">Token QR dicabut atau kedaluwarsa. Buat token baru untuk menampilkan QR.</p>}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {(["draft", "scheduled"].includes(item.status)) && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id || item.jumlah_akses > 0} onClick={() => beginEdit(item)}>Ubah jadwal</button>}
-              {item.status === "draft" && <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "scheduled")}>Jadwalkan</button>}
-              {item.status === "scheduled" && <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "active")}>Mulai sesi</button>}
-              {item.status === "active" && <button className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-bold text-amber-700" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "suspended")}>Tangguhkan</button>}
-              {item.status === "suspended" && <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "active")}>Lanjutkan sesi</button>}
-              {(["active", "suspended"].includes(item.status)) && <button className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-bold text-amber-700" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "completed")}>Tutup sesi</button>}
-              {item.status === "active" && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id} onClick={() => extendSession(item)}>Perpanjang waktu</button>}
-              {(["draft", "scheduled"].includes(item.status)) && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "cancelled")}>Batalkan</button>}
-              {item.status !== "completed" && item.status !== "cancelled" && item.token && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => void revokeToken(item)}>Cabut QR</button>}
-              {item.status !== "completed" && item.status !== "cancelled" && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id} onClick={() => void mutate(item.id, () => rotateSesiToken(item.id), "Token baru dibuat. QR lama tidak berlaku.")}>{item.token ? "Rotasi token" : "Buat token QR"}</button>}
-              {(["draft", "scheduled", "cancelled"].includes(item.status)) && item.jumlah_akses === 0 && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => void removeSession(item)}>Hapus</button>}
-            </div>
-          </div>)}
+              </div>)}
         </div>}
       </section>
-      {qrBesar !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setQrBesar(null)}><div className="rounded-2xl bg-white p-5 text-center" onClick={(event) => event.stopPropagation()}><div className="mb-3 text-sm font-bold">QR Sesi Ujian</div><img className="size-[min(75vw,24rem)]" src={qrImages[qrBesar]} alt="QR Code sesi ujian"/><div className="mt-3 flex justify-center gap-2"><button className="rounded-lg border px-4 py-2 text-xs font-bold" onClick={() => document.documentElement.requestFullscreen?.()}>Layar penuh</button><button className="rounded-lg bg-[#202126] px-5 py-2 text-xs font-bold text-white" onClick={() => setQrBesar(null)}>Tutup</button></div></div></div>}
+      {qrBesar !== null && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 sm:p-6" onClick={() => setQrBesar(null)}>
+          <div className="rounded-2xl bg-white p-6 sm:p-8 text-center max-w-md w-full" onClick={(event) => event.stopPropagation()}>
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-700 mb-4">
+              <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+              QR Sesi Ujian
+            </div>
+            <img className="size-[min(70vw,16rem)] mx-auto rounded-xl border border-slate-100 mb-6" src={qrImages[qrBesar]} alt="QR Code sesi ujian" />
+            <div className="flex flex-col gap-2">
+              <button className="rounded-lg border px-4 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition" onClick={() => document.documentElement.requestFullscreen?.()}>
+                Tampilan Penuh
+              </button>
+              <button className="rounded-lg bg-[#202126] px-5 py-2.5 text-xs font-bold text-white" onClick={() => setQrBesar(null)}>
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     {confirmDialog}
     {promptDialog}
@@ -3163,14 +3439,22 @@ function LogsPage({
 }) {
   const { logs, currentUser } = useDb()
   const [mengEkspor, setMengEkspor] = useState(false)
-  // Dosen hanya melihat log miliknya; aktivitas QR juga ditampilkan ke panitia.
+  const [filterAktivitas, setFilterAktivitas] = useState("semua")
+  // Hak akses sudah dibatasi oleh API. Di sisi UI, dosen tetap dibatasi lagi
+  // ke aktivitasnya sendiri; log panitia mengikuti data cetak dari endpoint.
   const filtered =
     role === "dosen"
       ? logs.filter((log) => log.nama === currentUser?.nama)
-      : role === "panitia"
-        ? logs.filter((log) => log.aksi.toLowerCase().includes("qr"))
-        : logs
-  const totalAksesQr = filtered.filter((log) => log.aksi.toLowerCase().includes("qr")).length
+      : logs
+  const byCategory = filtered.filter((log) => {
+    const action = log.aksi.toLowerCase()
+    if (filterAktivitas === "qr") return action.includes("qr")
+    if (filterAktivitas === "upload") return action.includes("upload")
+    if (filterAktivitas === "revisi") return action.includes("revisi")
+    if (filterAktivitas === "cetak") return action.includes("cetak")
+    return true
+  })
+  const totalAksesQr = filtered.filter((log) => /qr/i.test(log.aksi)).length
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
@@ -3206,16 +3490,23 @@ function LogsPage({
               Audit trail tidak dapat diubah atau dihapus
             </p>
           </div>
-          <div className="flex gap-2">
-            <select className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs">
-              <option>Semua aktivitas</option>
-              <option>Akses QR</option>
-              <option>Upload</option>
-              <option>Revisi</option>
-            </select>
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
+            <label className="grid gap-1.5 text-[11px] font-bold text-slate-500">
+              <span>Filter aktivitas</span>
+              <span className="relative block">
+                <select aria-label="Filter aktivitas log" className="min-h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3.5 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10 sm:min-w-52" value={filterAktivitas} onChange={(event) => setFilterAktivitas(event.target.value)}>
+              <option value="semua">Semua aktivitas</option>
+              <option value="qr">Akses QR</option>
+              <option value="upload">Upload</option>
+              <option value="revisi">Revisi</option>
+              <option value="cetak">Cetak</option>
+                </select>
+                <svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </span>
+            </label>
             {role === "kaprodi" && (
               <button
-                className="flex items-center gap-2 rounded-xl bg-[#202126] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-60"
+                className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#202126] px-4 py-2.5 text-xs font-bold text-white transition hover:bg-slate-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-300 disabled:opacity-60"
                 disabled={mengEkspor}
                 onClick={async () => {
                   setMengEkspor(true)
@@ -3251,7 +3542,7 @@ function LogsPage({
               </tr>
             </thead>
             <tbody>
-              {filtered.map((log) => (
+              {byCategory.map((log) => (
                 <tr
                   className="border-t border-slate-100"
                   key={`${log.waktu}-${log.nama}-${log.aksi}`}
@@ -3271,13 +3562,13 @@ function LogsPage({
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {byCategory.length === 0 && (
                 <tr className="border-t border-slate-100">
                   <td
                     className="px-6 py-10 text-center text-slate-400"
                     colSpan={5}
                   >
-                    Belum ada aktivitas yang tercatat.
+                    {filterAktivitas === "semua" ? "Belum ada aktivitas yang tercatat." : "Tidak ada aktivitas yang cocok dengan filter ini."}
                   </td>
                 </tr>
               )}
@@ -5046,11 +5337,17 @@ function GeometricLoading({ fading = false }: { fading?: boolean }) {
 }
 
 function AppShell() {
-  const { currentUser, loading, login, logout } = useDb()
+  const { currentUser, loading, login, logout, updateProfile } = useDb()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [active, setActive] = useState("Dashboard")
   const [toast, setToast] = useState("")
   const [helpOpen, setHelpOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [profileName, setProfileName] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [profilePhoto, setProfilePhoto] = useState<File>()
+  const [profileSaving, setProfileSaving] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifs, setNotifs] = useState<Notifikasi[]>([])
   const [unread, setUnread] = useState(0)
@@ -5058,6 +5355,12 @@ function AppShell() {
   useEffect(() => {
     enableNotificationSounds()
   }, [])
+
+  useEffect(() => {
+    if (!toast) return
+    const timer = window.setTimeout(() => setToast(""), 4000)
+    return () => window.clearTimeout(timer)
+  }, [toast])
   const loggedIn = currentUser != null
   const role = currentUser?.role ?? "panitia"
   const safeRole = normalizeRole(role)
@@ -5250,6 +5553,8 @@ function AppShell() {
           void logout()
         }}
         onNavigate={setActive}
+        onProfile={() => { setProfileName(currentUser?.nama ?? ""); setCurrentPassword(""); setNewPassword(""); setProfilePhoto(undefined); setProfileOpen(true) }}
+        photoUrl={currentUser?.photoUrl}
         open={sidebarOpen}
         role={safeRole}
         userName={currentUser?.nama ?? "Pengguna"}
@@ -5408,12 +5713,14 @@ function AppShell() {
             {helpOpen && (
         <HelpPanel role={safeRole} onClose={() => setHelpOpen(false)} />
       )}
+      {profileOpen && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setProfileOpen(false) }}><section role="dialog" aria-modal="true" aria-labelledby="profile-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 id="profile-title" className="text-xl font-bold text-slate-900">Profil saya</h2><p className="mt-1 text-sm text-slate-500">Perbarui foto, nama, atau kata sandi akun.</p></div><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Tutup" onClick={() => setProfileOpen(false)}>✕</button></div><form className="mt-5 grid gap-4" onSubmit={async (event) => { event.preventDefault(); setProfileSaving(true); try { await updateProfile({ nama: profileName.trim(), currentPassword: currentPassword || undefined, newPassword: newPassword || undefined, photo: profilePhoto }); setProfileOpen(false); setToast("Profil berhasil diperbarui.") } catch (error) { setToast(error instanceof Error ? error.message : "Profil gagal diperbarui.") } finally { setProfileSaving(false) } }}><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Foto profil<input type="file" accept="image/*" onChange={(event) => setProfilePhoto(event.target.files?.[0])} className="rounded-xl border border-slate-200 p-3 text-sm" /></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Nama<input required maxLength={150} value={profileName} onChange={(event) => setProfileName(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><div className="border-t border-slate-100 pt-4 text-sm font-bold text-slate-800">Ganti kata sandi</div><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi saat ini<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi baru (min. 8 karakter)<input type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><p className="text-xs text-slate-500">Isi kedua kolom kata sandi hanya jika ingin menggantinya.</p><div className="flex justify-end gap-2"><button type="button" className="rounded-xl border px-4 py-2.5 text-sm font-semibold" onClick={() => setProfileOpen(false)}>Batal</button><button disabled={profileSaving} className="rounded-xl bg-[#202126] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">{profileSaving ? "Menyimpan..." : "Simpan perubahan"}</button></div></form></section></div>}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-[60] flex max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-xs font-semibold text-white shadow-2xl">
+        <div role="status" className="fixed bottom-6 right-6 z-[60] flex max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-xs font-semibold text-white shadow-2xl">
           <span className="grid size-6 place-items-center rounded-full bg-emerald-500">
             <Icon name="check" size={14} />
           </span>
-          {toast}
+          <span className="flex-1">{toast}</span>
+          <button aria-label="Tutup notifikasi" className="rounded p-1 text-white/70 hover:bg-white/10 hover:text-white" onClick={() => setToast("")}>×</button>
         </div>
       )}
 
