@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BankSoal;
 use App\Models\LogAktivitas;
-use App\Models\LogCetak;
+use App\Models\SesiUjian;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +34,7 @@ class DashboardController extends Controller
             'role' => 'dosen',
             'cards' => [
                 ['label' => 'Total Soal Saya', 'value' => $soal->count()],
-                ['label' => 'Siap Cetak', 'value' => $soal->where('status', 'siap_cetak')->count()],
+                ['label' => 'Menunggu Persetujuan', 'value' => $soal->where('status', 'terkunci')->count()],
                 ['label' => 'Terkunci', 'value' => $soal->where('status', 'terkunci')->count()],
                 ['label' => 'Diarsip', 'value' => $soal->where('status', 'arsip')->count()],
             ],
@@ -66,16 +66,16 @@ class DashboardController extends Controller
 
     private function panitiaStats(): JsonResponse
     {
-        $siapCetak = BankSoal::where('status', 'siap_cetak')->count();
-        $totalCetak = LogCetak::sum('jumlah_cetak');
+        $siapUjian = BankSoal::where('status', 'siap_ujian')->whereNotNull('file_path')->count();
+        $totalUjian = SesiUjian::count();
+        $sesiAktif = SesiUjian::where('status', 'active')->where('waktu_selesai', '>', now())->count();
 
         return response()->json([
             'role' => 'panitia',
             'cards' => [
-                ['label' => 'Siap Dicetak', 'value' => $siapCetak],
-                ['label' => 'Total Lembar Dicetak', 'value' => $totalCetak],
-                ['label' => 'Total Percetakan', 'value' => LogCetak::count()],
-                ['label' => 'Download', 'value' => 'Dilarang'],
+                ['label' => 'Siap Ujian Online', 'value' => $siapUjian],
+                ['label' => 'Total Ujian', 'value' => $totalUjian],
+                ['label' => 'Sesi Aktif', 'value' => $sesiAktif],
             ],
         ]);
     }

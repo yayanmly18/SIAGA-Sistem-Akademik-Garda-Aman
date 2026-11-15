@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'frontend_url' => env('SIKASA_FRONTEND_URL', 'http://localhost:8443'),
     /*
     |--------------------------------------------------------------------------
     | Konfigurasi Percetakan E-Brankas
@@ -27,4 +28,22 @@ return [
 
     // Batas waktu (detik) menjalankan perintah printer.
     'command_timeout' => (int) env('EBRANKAS_PRINT_TIMEOUT', 60),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cadangan Otomatis (Backup)
+    |--------------------------------------------------------------------------
+    |
+    | Dijadwalkan harian jam backup_jadwal via Console Kernel
+    | ($schedule->command('backup:run')). Berkas ZIP disimpan di backup_path
+    | (default: folder `backup/` di root proyek) dengan retensi backup_retensi
+    | berkas terbaru; riwayat sukses/gagal dicatat di tabel `backup_logs`
+    | dan ditampilkan di halaman Admin IT → Status Server.
+    |
+    */
+    'backup_jadwal' => env('EBRANKAS_BACKUP_JADWAL', '02:00'),
+
+    'backup_path' => env('EBRANKAS_BACKUP_PATH', null),
+
+    'backup_retensi' => (int) env('EBRANKAS_BACKUP_RETENSI', 14),
 ];

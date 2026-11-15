@@ -24,17 +24,25 @@ class BankSoal extends Model
         'status',
         'jumlah_mahasiswa',
         'jadwal_ujian',
-        'waktu_mulai_cetak',
+        'waktu_mulai_ujian',
+        'waktu_selesai_ujian',
+        'durasi_menit',
+        'qr_token',
+        'qr_code_path',
+        'template_soal_id',
+        'catatan_persetujuan',
         'dikunci_pada',
         'arsip_pada',
     ];
 
     protected $casts = [
         'jadwal_ujian' => 'datetime',
-        'waktu_mulai_cetak' => 'datetime',
+        'waktu_mulai_ujian' => 'datetime',
+        'waktu_selesai_ujian' => 'datetime',
         'dikunci_pada' => 'datetime',
         'arsip_pada' => 'datetime',
         'jumlah_mahasiswa' => 'integer',
+        'durasi_menit' => 'integer',
     ];
 
     public function dosen(): BelongsTo
@@ -57,10 +65,39 @@ class BankSoal extends Model
         return $this->hasMany(LogCetak::class, 'bank_soal_id');
     }
 
-    public function isTerbukaUntukCetak(): bool
+    public function templateSoal(): BelongsTo
     {
-        return $this->status === 'siap_cetak'
-            && $this->waktu_mulai_cetak !== null
-            && now()->greaterThanOrEqualTo($this->waktu_mulai_cetak);
+        return $this->belongsTo(TemplateSoal::class, 'template_soal_id');
+    }
+
+    public function sesiUjian(): HasMany
+    {
+        return $this->hasMany(SesiUjian::class, 'bank_soal_id');
+    }
+
+    public function isTerbukaUntukUjian(): bool
+    {
+        if (! in_array($this->status, ['siap_ujian', 'dibuka'], true)
+            || $this->waktu_mulai_ujian === null
+            || now()->lt($this->waktu_mulai_ujian)) {
+            return false;
+        }
+
+        $batasAkhir = $this->waktu_selesai_ujian
+            ?? $this->jadwal_ujian?->copy()->addMinutes($this->durasi_menit ?? 120);
+
+        return $batasAkhir === null || now()->lte($batasAkhir);
+    }
+
+    public function isUjianSelesai(): bool
+    {
+        return $this->status === 'selesai' || $this->status === 'arsip';
+    }
+
+    public function generateQrToken(): string
+    {
+        $token = bin(random_bytes(16));
+        $this->update(['qr_token' => $token]);
+        return $token;
     }
 }

@@ -38,13 +38,20 @@ import {
   recordPrint,
   resetUserPin,
   toApiRole,
-  toExamViews,
   toLogRows,
-  toUiAntrian,
   toUiLog,
   toUiRole,
   toUiSoal,
   toUiUser,
+  fetchServerStatus,
+
+  formatUkuran,
+
+  jalankanBackup,
+
+  labelHariBackup,
+
+  toServerStatus,
 } from "./db.ts"
 
 // ---------------------------------------------------------------------------
@@ -227,155 +234,27 @@ const baseSoal = {
 
   jadwal_ujian: "2026-10-13 08:00",
 
-  waktu_mulai_cetak: null,
+  waktu_mulai_ujian: null,
 
   file_path: "soal/abc.pdf",
 }
 
-describe("toUiSoal — jendela cetak", () => {
-  // Waktu dalam format lokal ("Y-m-d H:i") persis seperti yang dikirim server;
-
-  // jangan pakai toISOString() (UTC) karena new Date("...THH:mm") berarti
-
-  // waktu LOKAL sehingga tes bisa salah di zona waktu berbeda.
-
-  function waktuLokal(offsetMs: number): string {
-    const d = new Date(Date.now() + offsetMs)
-
-    const pad = (n: number) => String(n).padStart(2, "0")
-
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-  }
-
-  it("status terkunci → belum siap, menunggu Kaprodi", () => {
-    const soal = toUiSoal(baseSoal)
-
-    assert.equal(soal.print_ready, false)
-
-    assert.equal(soal.window, "Menunggu pembukaan Kaprodi")
-
-    assert.equal(soal.status, "terkunci")
-  })
-
-  it("status arsip → permanen tidak bisa dicetak", () => {
-    const soal = toUiSoal({ ...baseSoal, status: "arsip" })
-
-    assert.equal(soal.print_ready, false)
-
-    assert.equal(soal.window, "Diarsipkan permanen")
-
-    assert.equal(soal.status, "arsip")
-  })
-
-  it("siap_cetak tanpa jadwal buka → belum siap", () => {
-    const soal = toUiSoal({ ...baseSoal, status: "siap_cetak" })
-
-    assert.equal(soal.print_ready, false)
-
-    assert.equal(soal.window, "Jadwal buka cetak belum diatur")
-  })
-
-  it("siap_cetak dengan waktu buka lampau → siap dicetak", () => {
-    const soal = toUiSoal({
-      ...baseSoal,
-
-      status: "siap_cetak",
-
-      waktu_mulai_cetak: waktuLokal(-60_000),
-    })
-
-    assert.equal(soal.print_ready, true)
-
-    assert.equal(soal.window, "Jendela cetak terbuka")
-
-    assert.equal(soal.status, "siap_cetak")
-  })
-
-  it("siap_cetak dengan waktu buka mendatang → belum siap + info jadwal", () => {
-    const soal = toUiSoal({
-      ...baseSoal,
-
-      status: "siap_cetak",
-
-      waktu_mulai_cetak: waktuLokal(3_600_000),
-    })
-
-    assert.equal(soal.print_ready, false)
-
-    assert.match(soal.window, /^Bisa dicetak .+/)
-  })
-
-  it("memetakan tanggal ke normalisasi ISO & fallback join", () => {
-    const soal = toUiSoal({
-      ...baseSoal,
-
-      kode_mk: null,
-
-      nama_mk: null,
-
-      kelas: null,
-    })
-
+describe("toUiSoal", () => {
+  it("memetakan status approval dan waktu sesi ujian", () => {
+    const soal = toUiSoal({ ...baseSoal, status: "siap_ujian", waktu_mulai_ujian: "2026-10-13 08:00" })
+    assert.equal(soal.status, "siap_ujian")
     assert.equal(soal.jadwal_ujian, "2026-10-13T08:00")
-
+    assert.equal(soal.waktu_mulai_ujian, "2026-10-13T08:00")
+  })
+  it("memetakan penolakan dan metadata kosong", () => {
+    const soal = toUiSoal({ ...baseSoal, status: "ditolak", kode_mk: null, nama_mk: null, kelas: null, file_path: null })
+    assert.equal(soal.status, "ditolak")
     assert.equal(soal.kode_mk, "-")
-
     assert.equal(soal.nama_mk, "-")
-
     assert.equal(soal.kelas, "-")
+    assert.equal(soal.file_path, null)
   })
 })
-
-describe("toUiAntrian", () => {
-  const row = {
-    id: 1,
-
-    kode_mk: "EKM401",
-
-    nama_mk: "Ekonomi Makro IV",
-
-    kelas: "A",
-
-    dosen: "Dr. Rina",
-
-    jenis: "UAS" as const,
-
-    jadwal_ujian: "2026-10-14 10:00",
-
-    jumlah_mahasiswa: 38,
-
-    status_cetak: "bisa_cetak",
-
-    alasan: null,
-  }
-
-  it("bisa_cetak → print_ready true", () => {
-    const antrian = toUiAntrian(row)
-
-    assert.equal(antrian.print_ready, true)
-
-    assert.equal(antrian.window, "Jendela cetak terbuka")
-
-    assert.equal(antrian.dosen, "Dr. Rina")
-  })
-
-  it("selain bisa_cetak → alasan server ditampilkan", () => {
-    const antrian = toUiAntrian({
-      ...row,
-
-      status_cetak: "diluar_jendela",
-
-      alasan: "Jendela belum dibuka",
-    })
-
-    assert.equal(antrian.print_ready, false)
-
-    assert.equal(antrian.window, "Jendela belum dibuka")
-  })
-})
-
-// ---------------------------------------------------------------------------
-
 // Mapper log
 
 // ---------------------------------------------------------------------------
@@ -422,26 +301,7 @@ describe("formatLogDetail / toUiLog", () => {
   })
 })
 
-describe("toExamViews / toLogRows", () => {
-  it("toExamViews menurunkan field dari bank_soal termapper", () => {
-    const db = emptyDatabase()
-
-    db.bank_soal = [toUiSoal(baseSoal)]
-
-    const [view] = toExamViews(db)
-
-    assert.equal(view.code, "EKM401")
-
-    assert.equal(view.course, "Ekonomi Makro IV")
-
-    assert.equal(view.date, "13 Okt 2026")
-
-    assert.equal(view.time, "08:00")
-
-    assert.equal(view.status, "Terjadwal")
-  })
-
-  it("toLogRows menggabungkan waktu & mata kuliah", () => {
+describe("toLogRows", () => {  it("toLogRows menggabungkan waktu & mata kuliah", () => {
     const db = emptyDatabase()
 
     db.log_aktivitas = [
@@ -988,5 +848,168 @@ describe("clearToken", () => {
     clearToken()
 
     assert.equal(hasToken(), false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+
+// Status Server (Admin IT): mapper, format ukuran, label backup, fetch.
+
+// ---------------------------------------------------------------------------
+
+describe("formatUkuran", () => {
+  it("memformat byte ke satuan Indonesia dengan koma desimal", () => {
+    assert.equal(formatUkuran(0), "0 B")
+
+    assert.equal(formatUkuran(512), "512 B")
+
+    assert.equal(formatUkuran(1536), "1,5 KB")
+
+    assert.equal(formatUkuran(3_300_000_000), "3,1 GB")
+
+    assert.equal(formatUkuran(8 * 1024 ** 3), "8 GB")
+  })
+
+  it("aman untuk null / negatif / tak hingga", () => {
+    assert.equal(formatUkuran(null), "—")
+
+    assert.equal(formatUkuran(-5), "—")
+
+    assert.equal(formatUkuran(Number.NaN), "—")
+  })
+})
+
+describe("labelHariBackup", () => {
+  it("mengembalikan hari ini untuk waktu sekarang", () => {
+    assert.equal(labelHariBackup(new Date().toISOString()), "hari ini")
+  })
+
+  it("mengembalikan kemarin untuk waktu sehari lalu", () => {
+    const kemarin = new Date(Date.now() - 86_400_000).toISOString()
+
+    assert.equal(labelHariBackup(kemarin), "kemarin")
+  })
+
+  it("aman untuk null / rusak", () => {
+    assert.equal(labelHariBackup(null), "")
+
+    assert.equal(labelHariBackup("bukan-tanggal"), "")
+  })
+})
+
+const contohResponsStatus = {
+  cpu: { persen: 18 },
+
+  memori: { total: 8 * 1024 ** 3, tersedia: 5 * 1024 ** 3, persen: 38 },
+
+  disk: { total: 100, tersedia: 58, terpakai: 42, persen: 42 },
+
+  layanan: [
+    {
+      nama: "Database MySQL",
+      alamat: "127.0.0.1:3306",
+      status: "aktif" as const,
+      detail: "4 ms",
+    },
+  ],
+
+  backup: {
+    status: "sukses",
+    waktu: new Date().toISOString(),
+    ukuran: 1024,
+    jadwal: "02:00",
+  },
+
+  waktu_server: new Date().toISOString(),
+}
+
+describe("toServerStatus", () => {
+  it("memetakan respons API dan menghitung memori terpakai", () => {
+    const hasil = toServerStatus(contohResponsStatus)
+
+    assert.equal(hasil.cpuPersen, 18)
+
+    assert.equal(hasil.memoriPersen, 38)
+
+    assert.equal(hasil.memoriTerpakai, 3 * 1024 ** 3)
+
+    assert.equal(hasil.memoriTotal, 8 * 1024 ** 3)
+
+    assert.equal(hasil.backupStatus, "sukses")
+
+    assert.equal(hasil.layanan[0]?.status, "aktif")
+
+    assert.equal(hasil.backupJadwal, "02:00")
+  })
+
+  it("menjatuhkan status layanan asing ke periksa dan null ke default", () => {
+    const hasil = toServerStatus({
+      cpu: { persen: null },
+      memori: { total: null, tersedia: null, persen: null },
+      layanan: [{ nama: "X", alamat: "y", status: "aneh", detail: "z" }] as never,
+      backup: { status: "tidak-dikenal" },
+    })
+
+    assert.equal(hasil.cpuPersen, null)
+
+    assert.equal(hasil.memoriPersen, null)
+
+    assert.equal(hasil.memoriTerpakai, null)
+
+    assert.equal(hasil.layanan[0]?.status, "periksa")
+
+    assert.equal(hasil.backupStatus, "belum")
+  })
+
+  it("status tidak standar dari server dipaksakan aman bertipe ServerStatus", () => {
+    const hasil = toServerStatus({
+      cpu: { persen: "besar" },
+    } as never)
+
+    assert.equal(hasil.cpuPersen, null)
+  })
+})
+
+describe("fetchServerStatus", () => {
+  it("memanggil GET /server-status dan memetakan hasilnya", async () => {
+    respond = (url) => {
+      assert.equal(url, `${API_BASE}/server-status`)
+
+      return jsonResponse(contohResponsStatus)
+    }
+
+    const hasil = await fetchServerStatus()
+
+    assert.equal(calls.length, 1)
+
+    assert.equal(hasil.cpuPersen, 18)
+
+    assert.equal(hasil.diskPersen, 42)
+  })
+
+  it("melempar ApiError saat backend gagal (tanpa angka palsu)", async () => {
+    respond = () => jsonResponse({ message: "Rusak" }, 500)
+
+    await assert.rejects(fetchServerStatus(), ApiError)
+  })
+})
+
+describe("jalankanBackup", () => {
+  it("memanggil POST /server-status/backup dan memetakan status baru", async () => {
+    respond = (url, init) => {
+      assert.equal(url, `${API_BASE}/server-status/backup`)
+
+      assert.equal(init?.method, "POST")
+
+      return jsonResponse({ backup: contohResponsStatus.backup })
+    }
+
+    const hasil = await jalankanBackup()
+
+    assert.equal(calls.length, 1)
+
+    assert.equal(hasil.backupStatus, "sukses")
+
+    assert.equal(hasil.backupUkuran, 1024)
   })
 })

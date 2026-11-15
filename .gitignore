@@ -33,3 +33,6 @@ backend/.phpunit.result.cache
 # beside it.
 /.plugins/
 /.opencode-skills/
+
+# Local generated backups may contain database data
+/backup/

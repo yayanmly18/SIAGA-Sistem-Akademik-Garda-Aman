@@ -5,8 +5,13 @@ import {
   useMemo,
   useRef,
   useState,
+  lazy,
+  Suspense,
   type ReactNode,
 } from "react"
+import QRCode from "qrcode"
+import { enableNotificationSounds, playNotificationSound } from "./notificationSound"
+const StudentAccess = lazy(() => import("./StudentAccess"))
 import {
   APP_NAMA,
   APP_SINGKATAN,
@@ -18,8 +23,10 @@ import {
 import {
   addUser,
   authenticate,
-  bukaCetak,
   createBankSoal,
+  createTemplateSoal,
+  deleteTemplateSoal,
+  downloadTemplateSoal,
   createMataKuliah,
   decideRevisi,
   deleteMataKuliah,
@@ -28,7 +35,24 @@ import {
   exportBeritaAcara,
   fetchNotifikasi,
   fetchPrintersAdmin,
-  fetchPrinterStatus,
+  createSesiUjian,
+  deleteSesiUjian,
+  fetchLogAksesUjian,
+  fetchPesertaTerkunci,
+  mintaBukaAksesPeserta,
+  fetchPermintaanBukaAkses,
+  bukaAksesPeserta,
+  fetchSesiUjian,
+  fetchSoalDisetujui,
+  previewSoalPersetujuan,
+  putuskanPersetujuanSoal,
+  rotateSesiToken,
+  revokeSesiToken,
+  extendSesiUjian,
+  importPesertaSesi,
+  deletePesertaSesi,
+  setStatusSesiUjian,
+  updateSesiUjian,
   findUser,
   formatJam,
   formatTanggal,
@@ -38,15 +62,12 @@ import {
   loadDatabase,
   markAllNotifikasiRead,
   markNotifikasiRead,
-  recordPrint,
   requestRevisi,
   resetUserPassword,
-  resetUserPin,
   roleLabel,
   savePrinter,
   scanPrinters,
   sendPengingat,
-  toExamViews,
   toLogRows,
   togglePrinter,
   toggleUser,
@@ -54,21 +75,35 @@ import {
   updateUser,
   type BankSoal,
   type Database,
-  type ExamView,
   type LogRow,
   type MataKuliah,
   type MataKuliahInput,
   type Notifikasi,
   type PrinterAdmin,
   type PrinterScan,
-  type PrinterStatus,
-  type PrintResult,
   type RekapRow,
+  type TemplateSoal,
+  type LogAksesUjian,
+  type PesertaTerkunci,
+  type SesiUjian,
+  type SoalDisetujui,
   type UploadSoalInput,
   type User,
 } from "./db"
 
-type IconName = "archive" | "bell" | "book" | "calendar" | "check" | "chevron" | "chevronKiri" | "clock" | "dashboard" | "document" | "download" | "eye" | "eyeOff" | "file" | "history" | "lock" | "logout" | "menu" | "printer" | "search" | "settings" | "shield" | "upload" | "users" | "x"
+function toLocalDateTime(value: Date): string {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 16)
+}
+
+function defaultExamTimes(): { mulai: string; selesai: string } {
+  const mulai = new Date()
+  mulai.setSeconds(0, 0)
+  const selesai = new Date(mulai.getTime() + 2 * 60 * 60 * 1000)
+  return { mulai: toLocalDateTime(mulai), selesai: toLocalDateTime(selesai) }
+}
+
+type IconName = "archive" | "bell" | "book" | "calendar" | "check" | "chevron" | "chevronKiri" | "clock" | "dashboard" | "document" | "download" | "eye" | "eyeOff" | "file" | "history" | "lock" | "logout" | "menu" | "printer" | "qrcode" | "search" | "settings" | "shield" | "upload" | "users" | "x"
 
 type UserRole = "dosen" | "kaprodi" | "panitia" | "admin"
 
@@ -168,6 +203,16 @@ const iconPaths: Record<IconName, ReactNode> = {
       <rect x="7" y="14" width="10" height="7" />
     </>
   ),
+  qrcode: (
+    <>
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+      <rect x="8" y="8" width="8" height="8" />
+    </>
+  ),
+  // qrcode section removed due to Vite Oxc parsing issue
   search: (
     <>
       <circle cx="11" cy="11" r="7" />
@@ -225,6 +270,43 @@ function Icon({ name, size = 20 }: IconProps) {
   )
 }
 
+function SkeletonBlock({ className = "" }: { className?: string }) {
+  return <div aria-hidden="true" className={`animate-pulse rounded-md bg-slate-200/80 ${className}`} />
+}
+
+function SessionListSkeleton() {
+  return (
+    <div role="status" aria-label="Memuat daftar sesi" className="divide-y divide-slate-100">
+      {[0, 1, 2].map((row) => (
+        <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start" key={row}>
+          <div className="flex-1 space-y-3">
+            <SkeletonBlock className="h-4 w-3/4" />
+            <SkeletonBlock className="h-3 w-2/5" />
+            <SkeletonBlock className="h-3 w-1/2" />
+            <div className="flex gap-3 pt-2">
+              <SkeletonBlock className="size-28 rounded-xl" />
+              <div className="space-y-2 pt-2"><SkeletonBlock className="h-3 w-32" /><SkeletonBlock className="h-3 w-24" /></div>
+            </div>
+          </div>
+          <div className="flex gap-2"><SkeletonBlock className="h-8 w-20" /><SkeletonBlock className="h-8 w-20" /></div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function TableRowsSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div role="status" aria-label="Memuat data tabel" className="divide-y divide-slate-100">
+      {Array.from({ length: rows }, (_, row) => (
+        <div className="grid grid-cols-5 gap-4 p-4" key={row}>
+          {["w-4/5", "w-3/4", "w-2/3", "w-4/5", "w-1/3"].map((width, col) => <SkeletonBlock className={`h-4 ${width}`} key={col} />)}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 type NavItem = {
   label: string
   icon: IconName
@@ -258,11 +340,11 @@ const roleMeta: Record<UserRole, {
   },
   panitia: {
     label: "Panitia",
-    hint: "Cetak aman",
+    hint: "Distribusi soal ujian",
     nav: [
       { label: "Dashboard", icon: "dashboard" },
-      { label: "Antrian Cetak", icon: "printer" },
-      { label: "Log Cetak", icon: "history" },
+      { label: "Sesi Ujian", icon: "qrcode" },
+      { label: "Log Akses Ujian", icon: "history" },
     ],
   },
   admin: {
@@ -270,8 +352,10 @@ const roleMeta: Record<UserRole, {
     hint: "User & server",
     nav: [
       { label: "Dashboard", icon: "dashboard" },
+      { label: "Pengawasan Ujian", icon: "eye" },
       { label: "Status Server", icon: "settings" },
       { label: "Manajemen User", icon: "users" },
+      { label: "Template Soal", icon: "document" },
       { label: "Master Mata Kuliah", icon: "book" },
       { label: "Log Sistem", icon: "history" },
     ],
@@ -293,17 +377,17 @@ interface DbContextValue {
   db: Database
   currentUser: User | null
   loading: boolean
-  exams: ExamView[]
   logs: LogRow[]
   login: (email: string, password: string) => Promise<User>
   logout: () => Promise<void>
   upload: (input: UploadSoalInput) => Promise<BankSoal>
-  print: (
-    bankSoalId: number,
-    jumlahCetak: number,
-    pinKaprodi: string,
-    printerId?: number | null,
-  ) => Promise<PrintResult>
+  uploadTemplate: (input: {
+    nama_template: string
+    deskripsi?: string | null
+    file: File
+  }) => Promise<TemplateSoal>
+  deleteTemplate: (id: number) => Promise<void>
+  downloadTemplate: (id: number) => Promise<Blob>
   createUser: (input: {
     nama: string
     email: string
@@ -376,7 +460,6 @@ function DbProvider({ children }: { children: ReactNode }) {
       db,
       currentUser,
       loading,
-      exams: toExamViews(db),
       logs: toLogRows(db),
       login: async (email, password) => {
         const user = await authenticate(email, password)
@@ -392,15 +475,23 @@ function DbProvider({ children }: { children: ReactNode }) {
         setDb(await loadDatabase())
         return soal
       },
-      print: async (bankSoalId, jumlahCetak, pinKaprodi, printerId) => {
-        const result = await recordPrint(
-          bankSoalId,
-          jumlahCetak,
-          pinKaprodi,
-          printerId,
-        )
-        setDb(await loadDatabase())
-        return result
+      uploadTemplate: async (input) => {
+        const template = await createTemplateSoal(input)
+        setDb((current) => ({
+          ...current,
+          template_soal: [template, ...current.template_soal],
+        }))
+        return template
+      },
+      deleteTemplate: async (id) => {
+        await deleteTemplateSoal(id)
+        setDb((current) => ({
+          ...current,
+          template_soal: current.template_soal.filter((item) => item.id !== id),
+        }))
+      },
+      downloadTemplate: async (id) => {
+        return downloadTemplateSoal(id)
       },
       createUser: async (input) => {
         const created = await addUser(input)
@@ -492,7 +583,7 @@ function Sidebar({
           </button>
         </div>
 
-        <div className="px-4 pt-7 lg:px-3">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-7 lg:px-3">
           <div className="mb-3 px-3 text-[10px] font-bold tracking-[0.2em] text-slate-400 lg:hidden">
             MENU UTAMA
           </div>
@@ -528,7 +619,7 @@ function Sidebar({
           </nav>
         </div>
 
-        <div className="mt-auto p-4 lg:px-3">
+        <div className="mt-auto shrink-0 p-4 lg:px-3">
           <div className="rounded-2xl border border-black/5 bg-white p-4 lg:hidden">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-700">
               <span className="relative flex size-2">
@@ -617,257 +708,6 @@ function StatCard({
   )
 }
 
-function PrintModal({
-  exam,
-  onClose,
-  onPrint,
-}: {
-  exam: ExamView | null
-  onClose: () => void
-  onPrint: (
-    jumlahCetak: number,
-    pin: string,
-    printerId?: number | null,
-  ) => Promise<PrintResult | void>
-}) {
-  const [copies, setCopies] = useState(exam?.students ?? 1)
-  const [pin, setPin] = useState("")
-  const [sent, setSent] = useState(false)
-  const [result, setResult] = useState<PrintResult | null>(null)
-  const [sending, setSending] = useState(false)
-  const [error, setError] = useState("")
-
-  // Daftar printer ala Word — dimuat dari /printer-status (DB + deteksi OS).
-  const [printers, setPrinters] = useState<PrinterStatus[]>([])
-  const [printerId, setPrinterId] = useState<number | null>(null)
-
-  useEffect(() => {
-    let aktif = true
-    fetchPrinterStatus()
-      .then((res) => {
-        if (!aktif || !res) return
-        setPrinters(res.semua)
-        // Pilih otomatis printer utama (online) atau printer pertama.
-        const awal = res.utama ?? res.semua[0] ?? null
-        setPrinterId((cur) => cur ?? awal?.id ?? null)
-      })
-      .catch(() => {})
-    return () => {
-      aktif = false
-    }
-  }, [])
-
-  const printerTerpilih = printers.find((p) => p.id === printerId) ?? null
-
-  if (!exam) return null
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-[#15161a]/70 p-3 backdrop-blur-sm sm:p-4">
-      <div className="flex max-h-[calc(100vh-1.5rem)] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl sm:max-h-[calc(100vh-2rem)]">
-        {sent ? (
-          <div className="overflow-y-auto p-6 text-center sm:p-7">
-            <div
-              className={`mx-auto grid size-16 place-items-center rounded-full ${
-                result?.status === "menunggu"
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-emerald-100 text-emerald-700"
-              }`}
-            >
-              <Icon name="check" size={30} />
-            </div>
-            <div className="font-display mt-5 text-2xl font-bold text-slate-900">
-              {result?.status === "menunggu"
-                ? "Dokumen masuk antrian cetak"
-                : "Dokumen terkirim ke printer"}
-            </div>
-            <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-slate-500">
-              {copies} lembar soal {exam.course} untuk printer{" "}
-              {result?.printer ?? printerTerpilih?.nama_printer ?? "tujuan"}.
-              {result?.status === "menunggu" &&
-                " Akan tercetak otomatis begitu printer terhubung."}
-            </p>
-            <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left text-xs leading-relaxed text-slate-500">
-              {result?.status === "menunggu"
-                ? "Printer belum terhubung saat ini, jadi job tersimpan di antrian server. Admin IT tinggal menghubungkan printer, lalu job tercetak otomatis."
-                : "PIN hari ini berlaku untuk semua cetakan sampai pergantian hari."}{" "}
-              Aktivitas ini sudah direkam pada log cetak dengan identitas,
-              waktu, IP perangkat, dan jumlah salinan.
-            </div>
-            <button
-              className="mt-7 w-full rounded-xl bg-[#202126] py-3.5 text-sm font-bold text-white hover:bg-[#111216]"
-              onClick={onClose}
-            >
-              Kembali ke antrian
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5 sm:px-6 sm:py-4">
-              <div>
-                <div className="font-display text-lg font-bold text-slate-900 sm:text-xl">
-                  Konfirmasi Cetak Aman
-                </div>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Dokumen tidak akan disimpan di perangkat ini
-                </p>
-              </div>
-              <button
-                className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
-                onClick={onClose}
-              >
-                <Icon name="x" />
-              </button>
-            </div>
-            <div className="overflow-y-auto p-5 sm:p-6">
-              <div className="flex gap-3 rounded-2xl bg-[#f4f1ea] p-3.5">
-                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-white text-[#202126] shadow-sm">
-                  <Icon name="file" size={18} />
-                </div>
-                <div>
-                  <div className="text-sm font-semibold text-slate-800">
-                    {exam.course}
-                  </div>
-                  <div className="mt-0.5 text-xs text-slate-500">
-                    {exam.code} · Kelas {exam.className} · {exam.type}
-                  </div>
-                </div>
-              </div>
-
-              <label className="mt-4 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Jumlah cetak
-              </label>
-              <div className="mt-1.5 flex items-center rounded-xl border border-slate-200 bg-white p-1">
-                <button
-                  className="grid size-9 place-items-center rounded-lg text-lg text-slate-500 hover:bg-slate-100"
-                  onClick={() => setCopies(Math.max(1, copies - 1))}
-                >
-                  −
-                </button>
-                <input
-                  className="w-full border-0 bg-transparent text-center text-sm font-bold text-slate-800 outline-none"
-                  min="1"
-                  onChange={(event) => setCopies(Number(event.target.value))}
-                  type="number"
-                  value={copies}
-                />
-                <button
-                  className="grid size-9 place-items-center rounded-lg text-lg text-slate-500 hover:bg-slate-100"
-                  onClick={() => setCopies(copies + 1)}
-                >
-                  +
-                </button>
-              </div>
-
-              <label className="mt-4 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                Printer tujuan
-              </label>
-              <div className="relative mt-1.5">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                  <Icon name="printer" size={17} />
-                </span>
-                <select
-                  className="w-full appearance-none rounded-xl border border-slate-200 bg-white py-2.5 pl-11 pr-9 text-sm font-semibold text-slate-800 outline-none transition focus:border-slate-900 focus:ring-4 focus:ring-amber-100"
-                  onChange={(event) =>
-                    setPrinterId(
-                      event.target.value ? Number(event.target.value) : null,
-                    )
-                  }
-                  value={printerId ?? ""}
-                >
-                  {printers.length === 0 && (
-                    <option value="">Belum ada printer terdaftar</option>
-                  )}
-                  {printers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.nama_printer}
-                      {p.online
-                        ? " · Online"
-                        : p.ada_di_windows
-                          ? " · Belum terhubung (masuk antrian)"
-                          : " · Tidak terdaftar di server"}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                  ▾
-                </span>
-              </div>
-              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
-                {printerTerpilih?.online
-                  ? "Printer siap — dokumen dikirim langsung."
-                  : "Boleh dipilih meski printer belum terhubung: dokumen tetap masuk antrian dan tercetak otomatis saat printer menyala."}
-              </p>
-
-              <label className="mt-4 block text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                PIN Cetak Kaprodi (6 digit, berlaku hari ini)
-              </label>
-              <div className="relative mt-1.5">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                  <Icon name="lock" size={17} />
-                </span>
-                <input
-                  autoFocus
-                  className="w-full rounded-xl border border-slate-200 py-2.5 pl-11 pr-4 text-center text-base font-bold tracking-[0.45em] text-slate-800 outline-none transition focus:border-slate-900 focus:ring-4 focus:ring-amber-100"
-                  inputMode="numeric"
-                  maxLength={6}
-                  onChange={(event) => {
-                    // Hanya 6 digit angka — sesuai format PIN Cetak backend.
-                    setPin(
-                      event.target.value.replace(/[^0-9]/g, "").slice(0, 6),
-                    )
-                    setError("")
-                  }}
-                  placeholder="••••••"
-                  type="password"
-                  value={pin}
-                />
-              </div>
-              {error && (
-                <div className="mt-3 flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700">
-                  <Icon name="shield" size={16} />
-                  {error}
-                </div>
-              )}
-              <div className="mt-3.5 flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50/70 p-3 text-[11px] leading-relaxed text-amber-800">
-                <Icon name="shield" size={16} />
-                PIN berlaku hari ini untuk semua cetakan. Watermark identitas
-                petugas dan waktu cetak ditambahkan otomatis pada setiap
-                halaman.
-              </div>
-              <button
-                className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#202126] py-3 text-sm font-bold text-white transition hover:bg-[#111216] disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={pin.trim().length < 6 || sending}
-                onClick={async () => {
-                  setSending(true)
-                  setError("")
-                  try {
-                    const res = await onPrint(copies, pin.trim(), printerId)
-                    setResult(
-                      res && "job_id" in res ? res as PrintResult : null,
-                    )
-                    setSent(true)
-                  } catch (err) {
-                    setError(
-                      err instanceof Error
-                        ? err.message
-                        : "Percetakan gagal. Coba lagi.",
-                    )
-                  } finally {
-                    setSending(false)
-                  }
-                }}
-              >
-                <Icon name="printer" size={18} />
-                {sending ? "Mengirim..." : "Kirim ke Printer Kaprodi"}
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
-
 interface DemoCredential {
   email: string
   password: string
@@ -905,7 +745,7 @@ const loginSlides: {
     tag: "Nilai 02",
     judul: "Jejak Audit Lengkap",
     detail:
-      "Setiap unggah, revisi, persetujuan, dan cetak tercatat beserta pelaku dan waktunya.",
+      "Setiap unggah, revisi, persetujuan, dan akses soal tercatat beserta waktunya.",
     ikon: "history",
     aksen: "#37d6b3",
     gradasi:
@@ -913,10 +753,10 @@ const loginSlides: {
   },
   {
     tag: "Nilai 03",
-    judul: "Cetak Terkontrol",
+    judul: "Distribusi QR Terkontrol",
     detail:
-      "Naskah baru tercetak setelah PIN Cetak Kaprodi dikonfirmasi, lengkap dengan watermark keamanan.",
-    ikon: "printer",
+      "Soal dibuka dari QR sesuai jadwal ujian dan akses mahasiswa tercatat.",
+    ikon: "qrcode",
     aksen: "#6aa8ff",
     gradasi:
       "radial-gradient(120% 85% at 50% 118%, rgba(106,168,255,0.22) 0%, rgba(106,168,255,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(106,168,255,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #14171f 0%, #141a26 48%, #101319 100%)",
@@ -942,8 +782,8 @@ function LoginPage({
 }: {
   onLogin: (email: string, password: string) => Promise<string | null>
 }) {
-  const [showPassword, setShowPassword] = useState(false)
   const [selectedRole, setSelectedRole] = useState<UserRole>("panitia")
+  const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState("siti.h@feb.ac.id")
   const [password, setPassword] = useState("panitia123")
   const [error, setError] = useState("")
@@ -1270,7 +1110,7 @@ function LoginPage({
                     </ol>
                   ) : (
                     <p className="mt-3 text-xs leading-relaxed text-white/70">
-                      Lupa kata sandi atau PIN Cetak? Setelah masuk, Admin IT
+                      Lupa kata sandi? Setelah masuk, Admin IT
                       dapat mereset lewat menu{" "}
                       <b className="text-white">Manajemen User</b> — atau
                       hubungi tim infrastruktur FEB.
@@ -1320,7 +1160,7 @@ function LoginPage({
                 Hai, {roleSapaan[selectedRole]}
               </div>
               <p className="mt-1.5 text-[13px] text-slate-500">
-                Kelola naskah soal dari upload sampai tercetak.
+                Kelola soal ujian dengan distribusi aman melalui QR Code.
               </p>
               <div className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
                 Masuk sebagai
@@ -1484,7 +1324,7 @@ function DashboardPage({
     { icon: "book", tone: "blue", detail: "Ringkasan sistem" },
     { icon: "check", tone: "green", detail: "Status terkini" },
     { icon: "clock", tone: "gold", detail: "Perlu tindakan" },
-    { icon: "printer", tone: "blue", detail: "Aktivitas tercatat" },
+    { icon: "qrcode", tone: "blue", detail: "Akses tercatat" },
   ] as const
   const stats = (db.dashboard?.cards ?? []).map((card, index) => {
     const style = statStyles[index % statStyles.length]
@@ -1501,9 +1341,9 @@ function DashboardPage({
   const greeting = `Selamat datang, ${namaDepan || roleLabel(role)}.`
 
   const statusWidth = (s: string) =>
-    s === "siap_cetak" || s === "terkunci" ? "w-full" : "w-1/3"
+    s === "siap_ujian" || s === "terkunci" ? "w-full" : "w-1/3"
   const statusSingkat = (s: string) =>
-    s === "siap_cetak" ? "Siap" : s === "arsip" ? "Arsip" : "Kunci"
+    s === "siap_ujian" ? "Disetujui" : s === "ditolak" ? "Ditolak" : s === "arsip" ? "Arsip" : "Menunggu"
 
   // Ringkasan + panel progres dibangun dari data nyata milik peran terkait.
   let summary = "Semua layanan berjalan normal."
@@ -1515,14 +1355,12 @@ function DashboardPage({
 
   if (role === "dosen") {
     const total = db.bank_soal.length
-    const terkunci = db.bank_soal.filter(
-      (s) => s.status === "terkunci" || s.status === "siap_cetak",
-    ).length
-    summary = `${total} soal Anda; ${terkunci} sudah terkunci.`
+    const menunggu = db.bank_soal.filter((s) => s.status === "terkunci").length
+    summary = `${total} soal Anda; ${menunggu} menunggu persetujuan Kaprodi.`
     title = "Kesiapan Soal Anda"
     subtitle = `${total} soal pada semester aktif`
-    percent = total ? `${Math.round((terkunci / total) * 100)}%` : "0%"
-    width = total ? (terkunci === total ? "w-full" : "w-3/4") : "w-0"
+    percent = total ? `${Math.round(((total - menunggu) / total) * 100)}%` : "0%"
+    width = total ? (menunggu === 0 ? "w-full" : "w-3/4") : "w-0"
     rows = db.bank_soal
       .slice(0, 6)
       .map((s) => [
@@ -1554,27 +1392,11 @@ function DashboardPage({
         r.status !== "belum_upload" ? "w-full" : "w-1/3",
       ])
   } else if (role === "panitia") {
-    const total = db.bank_soal.length
-    const ready = db.bank_soal.filter((s) => s.print_ready).length
-    summary = `${ready} soal siap dicetak dari ${total} antrian.`
-    title = "Kesiapan Cetak Hari Ini"
-    subtitle = `${ready} dari ${total} antrian siap dicetak`
-    percent = total ? `${Math.round((ready / total) * 100)}%` : "0%"
-    width = total
-      ? ready === total
-        ? "w-full"
-        : ready
-          ? "w-2/3"
-          : "w-0"
-      : "w-0"
-    rows = db.bank_soal
-      .slice(0, 6)
-      .map((s) => [
-        s.nama_mk,
-        s.window,
-        s.jenis,
-        s.print_ready ? "w-full" : "w-1/3",
-      ])
+    summary = "Atur sesi ujian dan distribusikan akses soal melalui QR Code."
+    title = "Distribusi Soal Online"
+    subtitle = "Jawaban tetap dikerjakan pada lembar kertas"
+    percent = "QR"
+    width = "w-full"
   } else {
     const total = db.users.length
     const aktif = db.users.filter((u) => u.aktif).length
@@ -1608,7 +1430,7 @@ function DashboardPage({
         : role === "kaprodi"
           ? "Rekap Soal"
           : role === "panitia"
-            ? "Antrian Cetak"
+            ? "Sesi Ujian"
             : "Status Server",
     action:
       role === "dosen"
@@ -1616,14 +1438,14 @@ function DashboardPage({
         : role === "kaprodi"
           ? "Buka rekap soal"
           : role === "panitia"
-            ? "Buka antrian cetak"
+            ? "Kelola sesi ujian"
             : "Periksa status server",
     actionIcon: (role === "dosen"
       ? "upload"
       : role === "kaprodi"
         ? "book"
         : role === "panitia"
-          ? "printer"
+          ? "qrcode"
           : "settings") as IconName,
     stats,
   }
@@ -1752,14 +1574,19 @@ function DashboardPage({
 }
 
 function UploadPage({ showToast }: { showToast: (message: string) => void }) {
-  const { db, upload } = useDb()
+  const {
+    db,
+    upload,
+    downloadTemplate,
+  } = useDb()
   const [file, setFile] = useState<File | null>(null)
   const [judul, setJudul] = useState("")
   const [busy, setBusy] = useState(false)
   const [mkId, setMkId] = useState<number | null>(null)
   const [jenis, setJenis] = useState<"UTS" | "UAS">("UTS")
-  const [jadwal, setJadwal] = useState("2026-10-13T08:00")
+  const [jadwal, setJadwal] = useState(() => defaultExamTimes().mulai)
   const [jumlah, setJumlah] = useState(40)
+  const [templateSoalId, setTemplateSoalId] = useState<number | null>(null)
   const effectiveMkId = mkId ?? db.mata_kuliah[0]?.id ?? 0
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_0.65fr]">
@@ -1802,6 +1629,32 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
               ))}
             </select>
           </label>
+          {db.template_soal.length > 0 && (
+            <label className="text-xs font-bold text-slate-600">
+              Referensi template
+              <select
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
+                onChange={(event) =>
+                  setTemplateSoalId(
+                    event.target.value === ""
+                      ? null
+                      : Number(event.target.value),
+                  )
+                }
+                value={templateSoalId ?? ""}
+              >
+                <option value="">— Pilih template (opsional) —</option>
+                {db.template_soal.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.nama_template}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-[10px] text-slate-400">
+                Format acuan yang disediakan Admin IT.
+              </p>
+            </label>
+          )}
           <label className="text-xs font-bold text-slate-600">
             Judul soal
             <input
@@ -1830,6 +1683,7 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
             <input
               className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
               onChange={(event) => setJadwal(event.target.value)}
+              min={toLocalDateTime(new Date())}
               type="datetime-local"
               value={jadwal}
             />
@@ -1878,17 +1732,18 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
             if (!judul.trim()) return showToast("Judul soal wajib diisi.")
             setBusy(true)
             try {
-              const soal = await upload({
+              await upload({
                 mkId: effectiveMkId,
                 jenis,
                 judul: judul.trim(),
                 jadwalUjian: jadwal,
                 jumlahMahasiswa: jumlah,
+                templateSoalId,
                 file,
               })
               setFile(null)
               setJudul("")
-              showToast(`Soal dienkripsi & dikunci (${soal.file_path}).`)
+              showToast("Soal terenkripsi dan menunggu persetujuan Kaprodi.")
             } catch (error) {
               showToast(
                 error instanceof Error
@@ -1901,7 +1756,7 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
           }}
         >
           <Icon name="lock" size={18} />{" "}
-          {busy ? "Mengenkripsi..." : "Enkripsi & Kunci Soal"}
+          {busy ? "Mengenkripsi..." : "Enkripsi & Ajukan Persetujuan"}
         </button>
       </section>
       <section className="space-y-6">
@@ -1936,6 +1791,75 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
             ))}
           </div>
         </div>
+        {db.template_soal.length > 0 && (
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-display text-lg font-bold text-slate-900">
+                Template Soal
+              </div>
+              <button
+                onClick={() => {
+                  // placeholder: handled by TemplatePage for admin; here just info
+                }}
+                className="text-[10px] text-slate-400 hover:text-slate-600 underline"
+                disabled
+              >
+                Dikelola oleh Admin IT
+              </button>
+            </div>
+            <div className="mt-2 space-y-2">
+              {db.template_soal.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
+                >
+                  <div className="grid size-8 place-items-center rounded-lg bg-[#f4f1ea] text-slate-600">
+                    <Icon name="document" size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-slate-700 truncate">
+                      {tpl.nama_template}
+                    </div>
+                    {tpl.deskripsi && (
+                      <div className="mt-0.5 text-[10px] text-slate-400 truncate">
+                        {tpl.deskripsi}
+                      </div>
+                    )}
+                    <div className="mt-1 text-[10px] text-slate-400">
+                      Oleh {tpl.pembuat_nama ?? "-"} ·
+                      {tpl.created_at ?? "-"}
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const blob = await downloadTemplate(tpl.id)
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement("a")
+                        a.href = url
+                        const extension = tpl.file_path?.split(".").pop() || "bin"
+                        a.download = `${tpl.nama_template}.${extension}`
+                        a.click()
+                        window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+                        showToast(`Template "${tpl.nama_template}" diunduh.`)
+                      } catch (error) {
+                        showToast(
+                          error instanceof Error
+                            ? error.message
+                            : "Unduhan gagal.",
+                        )
+                      }
+                    }}
+                    className="ml-2 flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-[11px] font-bold transition"
+                    title="Unduh template"
+                  >
+                    <Icon name="download" size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6">
           <div className="font-display text-lg font-bold text-slate-900">
             Soal Saya
@@ -1952,8 +1876,10 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
                     {soal.nama_mk}
                   </div>
                   <div className="mt-0.5 text-[10px] text-slate-400">
-                    {soal.status === "siap_cetak"
-                      ? "Siap dicetak"
+                    {soal.status === "siap_ujian"
+                      ? "Disetujui untuk ujian"
+                      : soal.status === "ditolak"
+                        ? "Ditolak Kaprodi"
                       : soal.status === "arsip"
                         ? "Diarsipkan"
                         : "Terkunci"}{" "}
@@ -1965,8 +1891,7 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
             ))}
             {db.bank_soal.length === 0 && (
               <p className="text-xs text-slate-400">
-                Belum ada soal terkunci. Soal yang baru dikunci akan muncul di
-                sini.
+                Belum ada soal yang dikirim untuk persetujuan Kaprodi.
               </p>
             )}
           </div>
@@ -1976,7 +1901,450 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
   )
 }
 
-// Modal detail sebuah naskah soal untuk Kaprodi. Dibangun dari baris rekap
+// Halaman manajemen Template Soal (khusus Admin IT).
+function TemplatePage({ showToast }: { showToast: (message: string) => void }) {
+  const {
+    db,
+    currentUser,
+    uploadTemplate,
+    deleteTemplate,
+    downloadTemplate,
+  } = useDb()
+  const [namaTemplate, setNamaTemplate] = useState("")
+  const [deskripsi, setDeskripsi] = useState("")
+  const [file, setFile] = useState<File | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [deleting, setDeleting] = useState<number | null>(null)
+
+  const isAdmin = currentUser?.role === "admin"
+
+  const handleUpload = async () => {
+    if (!namaTemplate.trim()) return showToast("Nama template wajib diisi.")
+    if (!file) return showToast("Pilih berkas template terlebih dahulu.")
+    if (!/\.(pdf|docx?)$/i.test(file.name)) {
+      return showToast("Format berkas harus PDF, DOC, atau DOCX.")
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      return showToast("Ukuran berkas maksimal 10 MB.")
+    }
+    setBusy(true)
+    try {
+      await uploadTemplate({
+        nama_template: namaTemplate.trim(),
+        deskripsi: deskripsi.trim() || null,
+        file,
+      })
+      setNamaTemplate("")
+      setDeskripsi("")
+      setFile(null)
+      showToast("Template soal berhasil diunggah.")
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Gagal mengunggah template.",
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Hapus template ini?")) return
+    setDeleting(id)
+    try {
+      await deleteTemplate(id)
+      showToast("Template berhasil dihapus.")
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Gagal menghapus template.",
+      )
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const handleDownload = async (tpl: TemplateSoal) => {
+    try {
+      const blob = await downloadTemplate(tpl.id)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const extension = tpl.file_path?.split(".").pop() || "bin"
+      a.download = `${tpl.nama_template}.${extension}`
+      a.click()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : "Unduhan gagal.",
+      )
+    }
+  }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[1fr_0.65fr]">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8">
+        <div className="font-display text-xl font-bold text-slate-900">
+          Manajemen Template Soal
+        </div>
+        <p className="mt-1 text-sm text-slate-400">
+          Unggah berkas referensi format soal yang akan digunakan dosen sebagai
+          acuan saat mengunggah soal.
+        </p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <label className="text-xs font-bold text-slate-600">
+            Nama template
+            <input
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
+              onChange={(event) => setNamaTemplate(event.target.value)}
+              placeholder="cth: Format Soal UTS Matakuliah X"
+              value={namaTemplate}
+            />
+          </label>
+          <label className="text-xs font-bold text-slate-600">
+            Deskripsi
+            <textarea
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
+              onChange={(event) => setDeskripsi(event.target.value)}
+              placeholder="Keterangan singkat tentang format template ini"
+              value={deskripsi}
+            />
+          </label>
+          <label className="text-xs font-bold text-slate-600 col-span-2">
+            Berkas template
+            <label className="mt-2 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-6 text-center transition hover:border-emerald-400">
+              <input
+                accept=".pdf,.doc,.docx"
+                className="hidden"
+                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                type="file"
+              />
+              <div className="grid size-12 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">
+                <Icon name={file ? "check" : "upload"} size={23} />
+              </div>
+              <div className="mt-4 text-sm font-bold text-slate-700">
+                {file?.name || "Klik untuk pilih berkas template"}
+              </div>
+              <div className="mt-1 text-xs text-slate-400">
+                PDF / DOC / DOCX · Maksimal 10 MB
+              </div>
+            </label>
+          </label>
+        </div>
+        <button
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#202126] py-3.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={busy || !namaTemplate.trim() || !file}
+          onClick={handleUpload}
+        >
+          <Icon name="upload" size={18} />{" "}
+          {busy ? "Mengunggah..." : "Simpan Template"}
+        </button>
+      </section>
+
+      <section className="space-y-6">
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-6">
+          <div className="font-display text-lg font-bold text-slate-900">
+            Daftar Template
+          </div>
+          {db.template_soal.length === 0 ? (
+            <p className="mt-4 text-xs text-slate-400 text-center">
+              Belum ada template. Silakan unggah template pertama.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {db.template_soal.map((tpl) => (
+                <div
+                  key={tpl.id}
+                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5"
+                >
+                  <div className="grid size-9 place-items-center rounded-lg bg-[#f4f1ea] text-slate-600">
+                    <Icon name="document" size={15} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-slate-700 truncate">
+                      {tpl.nama_template}
+                    </div>
+                    {tpl.deskripsi && (
+                      <div className="mt-0.5 text-[10px] text-slate-400 truncate">
+                        {tpl.deskripsi}
+                      </div>
+                    )}
+                    <div className="mt-1 text-[10px] text-slate-400">
+                      Oleh {tpl.pembuat_nama ?? "-"} ·
+                      {tpl.created_at ?? "-"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleDownload(tpl)}
+                      className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-[11px] font-bold transition"
+                      title="Unduh"
+                    >
+                      <Icon name="download" size={13} />
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => handleDelete(tpl.id)}
+                        disabled={deleting === tpl.id}
+                        className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] font-bold transition"
+                        title="Hapus"
+                      >
+                        <Icon name="x" size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) {
+  const [soal, setSoal] = useState<SoalDisetujui[]>([])
+  const [sesi, setSesi] = useState<SesiUjian[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<number | null>(null)
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [soalId, setSoalId] = useState("")
+  const [namaUjian, setNamaUjian] = useState("")
+  const [programStudi, setProgramStudi] = useState("")
+  const [keterangan, setKeterangan] = useState("")
+  const [statusAwal, setStatusAwal] = useState<"draft" | "scheduled">("scheduled")
+  const [mulai, setMulai] = useState(() => defaultExamTimes().mulai)
+  const [selesai, setSelesai] = useState(() => defaultExamTimes().selesai)
+  const waktuMinimum = toLocalDateTime(new Date())
+  const [qrImages, setQrImages] = useState<Record<number, string>>({})
+  const [qrBesar, setQrBesar] = useState<number | null>(null)
+
+  const refresh = async () => {
+    const [approved, sessions] = await Promise.all([fetchSoalDisetujui(), fetchSesiUjian()])
+    setSoal(approved)
+    setSesi(sessions)
+    const images = await Promise.all(sessions.filter((row) => row.token && row.qr_url).map(async (row) => [row.id, await QRCode.toDataURL(row.qr_url!, { width: 300, margin: 2, errorCorrectionLevel: "M" })] as const))
+    setQrImages(Object.fromEntries(images))
+  }
+
+  useEffect(() => {
+    refresh().catch((error) => showToast(error instanceof Error ? error.message : "Gagal memuat sesi."))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const resetForm = () => { const times = defaultExamTimes(); setEditingId(null); setSoalId(""); setNamaUjian(""); setProgramStudi(""); setKeterangan(""); setStatusAwal("scheduled"); setMulai(times.mulai); setSelesai(times.selesai) }
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setBusyId(editingId ?? 0)
+    try {
+      const metadata = { nama_ujian: namaUjian.trim(), program_studi: programStudi.trim(), keterangan: keterangan.trim() }
+      if (editingId) await updateSesiUjian(editingId, { waktu_mulai: mulai, waktu_selesai: selesai, ...metadata })
+      else await createSesiUjian({ bank_soal_id: Number(soalId), waktu_mulai: mulai, waktu_selesai: selesai, status: statusAwal, ...metadata })
+      await refresh()
+      resetForm()
+      showToast(editingId ? "Jadwal sesi diperbarui." : "Sesi ujian dibuat.")
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Gagal menyimpan sesi.")
+    } finally { setBusyId(null) }
+  }
+
+  const beginEdit = (item: SesiUjian) => {
+    setEditingId(item.id)
+    setSoalId(String(item.bank_soal_id))
+    setNamaUjian(item.nama_ujian ?? item.judul)
+    setProgramStudi(item.program_studi ?? "")
+    setKeterangan(item.keterangan ?? "")
+    setMulai(item.waktu_mulai.replace(" ", "T"))
+    setSelesai(item.waktu_selesai.replace(" ", "T"))
+  }
+
+  const mutate = async (id: number, fn: () => Promise<unknown>, success: string) => {
+    setBusyId(id)
+    try { await fn(); await refresh(); showToast(success) }
+    catch (error) { showToast(error instanceof Error ? error.message : "Operasi sesi gagal.") }
+    finally { setBusyId(null) }
+  }
+
+  const changeSessionStatus = (item: SesiUjian, status: SesiUjian["status"]) => {
+    const catatan = status === "cancelled" || status === "suspended"
+      ? window.prompt(status === "cancelled" ? "Alasan pembatalan sesi:" : "Alasan penangguhan sesi:")
+      : undefined
+    if ((status === "cancelled" || status === "suspended") && !catatan?.trim()) return
+    void mutate(item.id, () => setStatusSesiUjian(item.id, status, catatan ?? undefined), `Status sesi menjadi ${status}.`)
+  }
+
+  const extendSession = (item: SesiUjian) => {
+    const waktuBaru = window.prompt("Waktu selesai baru (YYYY-MM-DDTHH:mm):", item.waktu_selesai.replace(" ", "T"))
+    if (!waktuBaru) return
+    const catatan = window.prompt("Alasan perpanjangan waktu:")
+    if (!catatan?.trim()) return
+    void mutate(item.id, () => extendSesiUjian(item.id, waktuBaru.replace("T", " "), catatan.trim()), "Waktu sesi diperpanjang.")
+  }
+
+  const uploadRoster = (item: SesiUjian, file: File) => {
+    void mutate(item.id, async () => {
+      const count = await importPesertaSesi(item.id, file)
+      return count
+    }, `Roster ${item.nama_ujian} berhasil diimpor.`)
+  }
+
+  const downloadRosterTemplate = () => {
+    const csv = "\uFEFFnim,nama,email\r\n"
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }))
+    const link = document.createElement("a")
+    link.href = url
+    link.download = "template-peserta-sesi.csv"
+    link.click()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  const downloadQrPdf = async (item: SesiUjian) => {
+    const image = qrImages[item.id]
+    if (!image) return showToast("QR belum tersedia. Buat token sesi terlebih dahulu.")
+    try {
+      const { jsPDF } = await import("jspdf")
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(18)
+      pdf.text("SIKASA · AKSES SOAL UJIAN", 105, 24, { align: "center" })
+      pdf.setFont("helvetica", "normal")
+      pdf.setFontSize(12)
+      pdf.text(item.nama_ujian || item.judul, 105, 36, { align: "center", maxWidth: 175 })
+      pdf.text(`${item.nama_mk} · ${item.kode_mk} · Kelas ${item.kelas}`, 105, 45, { align: "center", maxWidth: 175 })
+      pdf.text(`Dosen: ${item.dosen ?? "-"}`, 105, 53, { align: "center" })
+      pdf.text(`Jadwal: ${item.waktu_mulai} — ${item.waktu_selesai}`, 105, 61, { align: "center" })
+      pdf.addImage(image, "PNG", 55, 72, 100, 100)
+      pdf.setFont("helvetica", "bold")
+      pdf.setFontSize(13)
+      pdf.text("Scan QR untuk membaca soal melalui browser", 105, 184, { align: "center" })
+      pdf.setFont("helvetica", "normal")
+      pdf.setFontSize(10)
+      pdf.text("Verifikasi dilakukan menggunakan roster dan kode OTP email. Jawaban ujian ditulis pada lembar kertas.", 105, 193, { align: "center", maxWidth: 170 })
+      pdf.save(`qr-sikasa-${item.id}.pdf`)
+      showToast("QR sesi berhasil disimpan sebagai PDF.")
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "PDF QR gagal dibuat.")
+    }
+  }
+
+  const idleSoal = soal.filter((item) => !sesi.some((s) => s.bank_soal_id === item.id))
+  return (
+    <div className="space-y-5">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
+        <h2 className="font-display text-lg font-bold text-slate-900">{editingId ? "Ubah Jadwal Sesi" : "Buat Sesi Ujian"}</h2>
+        <p className="mt-1 text-xs text-slate-500">Pilih soal yang sudah disetujui Kaprodi. Mahasiswa membaca soal lewat QR dan tetap menjawab di kertas.</p>
+        <form className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" onSubmit={submit}>
+          {!editingId && <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Soal disetujui
+            <select className="mt-1 w-full rounded-lg border border-slate-200 p-3" required value={soalId} onChange={(e) => setSoalId(e.target.value)}>
+              <option value="">Pilih soal</option>{idleSoal.map((item) => <option key={item.id} value={item.id}>{item.nama_mk} · {item.kelas} · {item.jenis} · {item.dosen}</option>)}
+            </select>
+          </label>}
+          <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Nama ujian<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" maxLength={200} required value={namaUjian} onChange={(e) => setNamaUjian(e.target.value)} placeholder="Contoh: UTS Semester Ganjil" /></label>
+          <label className="text-xs font-semibold text-slate-600">Program studi<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" maxLength={150} value={programStudi} onChange={(e) => setProgramStudi(e.target.value)} placeholder="Program studi (opsional)" /></label>
+          <label className="text-xs font-semibold text-slate-600">Waktu mulai<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" required min={waktuMinimum} type="datetime-local" value={mulai} onChange={(e) => setMulai(e.target.value)} /><span className="mt-1 block text-[11px] font-normal text-slate-400">Pilih waktu sekarang atau setelahnya.</span></label>
+          <label className="text-xs font-semibold text-slate-600">Waktu selesai<input className="mt-1 w-full rounded-lg border border-slate-200 p-3" required min={mulai || waktuMinimum} type="datetime-local" value={selesai} onChange={(e) => setSelesai(e.target.value)} /></label>
+          {!editingId && <label className="text-xs font-semibold text-slate-600">Status awal<select className="mt-1 w-full rounded-lg border border-slate-200 p-3" value={statusAwal} onChange={(e) => setStatusAwal(e.target.value as "draft" | "scheduled")}><option value="draft">Draft</option><option value="scheduled">Terjadwal</option></select></label>}
+          <label className="text-xs font-semibold text-slate-600 sm:col-span-2">Keterangan<textarea className="mt-1 w-full rounded-lg border border-slate-200 p-3" maxLength={2000} value={keterangan} onChange={(e) => setKeterangan(e.target.value)} /></label>
+          <div className="flex items-end gap-2"><button className="rounded-lg bg-[#202126] px-4 py-3 text-xs font-bold text-white disabled:opacity-50" disabled={busyId !== null || (!editingId && idleSoal.length === 0)}>{busyId !== null ? "Menyimpan..." : editingId ? "Simpan Jadwal" : "Buat Sesi"}</button>{editingId && <button className="rounded-lg border px-4 py-3 text-xs" type="button" onClick={resetForm}>Batal</button>}</div>
+        </form>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+        <div className="border-b border-slate-100 p-5"><h2 className="font-display text-lg font-bold">Daftar Sesi Ujian</h2></div>
+        {loading ? <SessionListSkeleton /> : sesi.length === 0 ? <p className="p-5 text-sm text-slate-400">Belum ada sesi ujian.</p> : <div className="divide-y divide-slate-100">
+          {sesi.map((item) => <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between" key={item.id}>
+            <div className="flex-1">
+              <div className="font-semibold text-slate-800">{item.nama_ujian} · {item.nama_mk} · {item.jenis} · Kelas {item.kelas}</div>
+              <div className="mt-1 text-xs text-slate-500">{item.kode_mk} · {item.dosen} · {item.judul}</div>
+              <div className="mt-1 text-xs text-slate-500">{item.program_studi ? `${item.program_studi} · ` : ""}{item.waktu_mulai} — {item.waktu_selesai} · Status: <b>{item.status}</b> · {item.jumlah_peserta} peserta · {item.jumlah_akses} akses tercatat</div>
+              {item.keterangan && <p className="mt-1 text-xs text-slate-500">{item.keterangan}</p>}
+              {item.catatan_status && <p className="mt-1 text-xs text-amber-700">Catatan status: {item.catatan_status}</p>}
+              {(["draft", "scheduled"].includes(item.status)) && <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs font-bold text-slate-700">Daftar peserta untuk verifikasi OTP</div><p className="mt-1 text-[11px] leading-relaxed text-slate-500">Impor daftar mahasiswa yang boleh membuka soal sesi ini. Isi satu baris untuk setiap mahasiswa dengan NIM, nama, dan email kampus aktif. Kode OTP akan dikirim ke email tersebut. Maksimal 5.000 peserta.</p><div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] text-slate-600"><div>nim,nama,email</div><div>230001,Andi Saputra,andi@kampus.ac.id</div></div><div className="mt-2 flex flex-wrap items-center gap-3"><button type="button" className="text-xs font-semibold text-emerald-700 underline" onClick={downloadRosterTemplate}>Unduh template CSV</button><input aria-label="Impor roster peserta CSV" type="file" accept=".csv,text/csv" className="max-w-full text-xs" disabled={busyId === item.id} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadRoster(item, file); event.currentTarget.value = "" }} />{item.jumlah_peserta > 0 && <button className="text-xs font-semibold text-rose-600 underline" disabled={busyId === item.id} onClick={() => window.confirm("Hapus semua roster sesi ini?") && void mutate(item.id, () => deletePesertaSesi(item.id), "Roster peserta dihapus.")}>Hapus roster</button>}</div><p className="mt-2 text-[10px] text-slate-400">Peserta terdaftar saat ini: {item.jumlah_peserta}. Roster harus dimasukkan sebelum sesi diaktifkan.</p></div>}
+              {item.token && <div className="mt-3 flex flex-wrap items-center gap-4">
+                <button className="rounded-lg border border-slate-200 p-1" title="Perbesar QR" onClick={() => setQrBesar(item.id)}><img className="size-32" src={qrImages[item.id]} alt={`QR ${item.nama_mk}`} /></button>
+                <div className="flex flex-col gap-2 text-xs">
+                  {item.qr_url && <a className="text-emerald-700 underline" href={item.qr_url} rel="noreferrer" target="_blank">Pratinjau halaman akses</a>}
+                  {item.qr_url && <button className="text-left font-semibold text-slate-600 underline" onClick={() => navigator.clipboard.writeText(item.qr_url!).then(() => showToast("Tautan sesi disalin."))}>Salin tautan QR</button>}
+                  <a className="text-slate-600 underline" href={qrImages[item.id]} download={`qr-sesi-${item.id}.png`}>Unduh QR PNG</a>
+                  <button className="text-left text-slate-600 underline" onClick={() => void downloadQrPdf(item)}>Unduh lembar QR PDF</button>
+                </div>
+              </div>}
+              {!item.token && <p className="mt-3 text-xs text-amber-700">Token QR dicabut atau kedaluwarsa. Buat token baru untuk menampilkan QR.</p>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(["draft", "scheduled"].includes(item.status)) && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id || item.jumlah_akses > 0} onClick={() => beginEdit(item)}>Ubah jadwal</button>}
+              {item.status === "draft" && <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "scheduled")}>Jadwalkan</button>}
+              {item.status === "scheduled" && <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "active")}>Mulai sesi</button>}
+              {item.status === "active" && <button className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-bold text-amber-700" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "suspended")}>Tangguhkan</button>}
+              {item.status === "suspended" && <button className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "active")}>Lanjutkan sesi</button>}
+              {(["active", "suspended"].includes(item.status)) && <button className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-bold text-amber-700" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "completed")}>Tutup sesi</button>}
+              {item.status === "active" && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id} onClick={() => extendSession(item)}>Perpanjang waktu</button>}
+              {(["draft", "scheduled"].includes(item.status)) && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "cancelled")}>Batalkan</button>}
+              {item.status !== "completed" && item.status !== "cancelled" && item.token && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => window.confirm("Cabut token QR ini? QR yang sudah dibagikan tidak akan berlaku.") && void mutate(item.id, () => revokeSesiToken(item.id), "Token QR dicabut.")}>Cabut QR</button>}
+              {item.status !== "completed" && item.status !== "cancelled" && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id} onClick={() => void mutate(item.id, () => rotateSesiToken(item.id), "Token baru dibuat. QR lama tidak berlaku.")}>{item.token ? "Rotasi token" : "Buat token QR"}</button>}
+              {(["draft", "scheduled", "cancelled"].includes(item.status)) && item.jumlah_akses === 0 && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => window.confirm("Hapus sesi ini?") && void mutate(item.id, () => deleteSesiUjian(item.id), "Sesi dihapus.")}>Hapus</button>}
+            </div>
+          </div>)}
+        </div>}
+      </section>
+      {qrBesar !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setQrBesar(null)}><div className="rounded-2xl bg-white p-5 text-center" onClick={(event) => event.stopPropagation()}><div className="mb-3 text-sm font-bold">QR Sesi Ujian</div><img className="size-[min(75vw,24rem)]" src={qrImages[qrBesar]} alt="QR Code sesi ujian"/><div className="mt-3 flex justify-center gap-2"><button className="rounded-lg border px-4 py-2 text-xs font-bold" onClick={() => document.documentElement.requestFullscreen?.()}>Layar penuh</button><button className="rounded-lg bg-[#202126] px-5 py-2 text-xs font-bold text-white" onClick={() => setQrBesar(null)}>Tutup</button></div></div></div>}
+    </div>
+  )
+}
+
+function LogAksesUjianPage({ showToast }: { showToast: (message: string) => void }) {
+  const [logs, setLogs] = useState<LogAksesUjian[]>([])
+  const [locked, setLocked] = useState<PesertaTerkunci[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<number | null>(null)
+  const refresh = async () => {
+    const [accessLogs, violations] = await Promise.all([fetchLogAksesUjian(), fetchPesertaTerkunci()])
+    setLogs(accessLogs)
+    setLocked(violations)
+  }
+  useEffect(() => {
+    let alive = true
+    Promise.all([fetchLogAksesUjian(), fetchPesertaTerkunci()]).then(([accessLogs, violations]) => {
+      if (alive) { setLogs(accessLogs); setLocked(violations) }
+    }).catch(() => { if (alive) { setLogs([]); setLocked([]) } }).finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [])
+  const requestAdminHelp = async (student: PesertaTerkunci) => {
+    const catatan = window.prompt(`Konfirmasi pemeriksaan untuk ${student.nama} (NIM ${student.nim}). Jelaskan hasil konfirmasi:`)
+    if (!catatan?.trim()) return
+    setBusyId(student.id)
+    try { await mintaBukaAksesPeserta(student.id, catatan.trim()); await refresh(); showToast("Permintaan bantuan dikirim kepada Admin IT.") }
+    catch (error) { showToast(error instanceof Error ? error.message : "Permintaan bantuan gagal dikirim.") }
+    finally { setBusyId(null) }
+  }
+  return <div className="space-y-5">
+    <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
+      <div className="border-b border-amber-100 p-5"><h2 className="font-display text-lg font-bold">Mahasiswa terkunci — konfirmasi Panitia</h2><p className="mt-1 text-xs text-slate-500">Setelah tiga kali meninggalkan halaman soal, akses dikunci. Konfirmasi mahasiswa secara langsung, lalu minta Admin IT membuka akses.</p></div>
+      {loading ? <TableRowsSkeleton rows={2} /> : locked.length === 0 ? <p className="p-5 text-sm text-slate-400">Tidak ada mahasiswa yang terkunci.</p> : <div className="divide-y divide-slate-100">{locked.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · {student.pelanggaran_count}/3 pelanggaran</div><div className="mt-1 text-xs text-slate-500">Dikunci: {student.access_locked_at ?? "-"}{student.unlock_requested_at ? ` · Permintaan dikirim ${student.unlock_requested_at} oleh ${student.peminta ?? "Panitia"}` : ""}</div>{student.unlock_request_note && <div className="mt-1 text-xs text-amber-800">Catatan: {student.unlock_request_note}</div>}</div>{student.unlock_requested_at ? <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">Menunggu Admin IT</span> : <button className="rounded-lg bg-[#202126] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void requestAdminHelp(student)}>{busyId === student.id ? "Mengirim..." : "Konfirmasi & minta Admin IT"}</button>}</div>)}</div>}
+    </section>
+    <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5 font-display text-lg font-bold">Log Akses Ujian</div>{loading ? <TableRowsSkeleton /> : <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="p-4">Mahasiswa</th><th className="p-4">Mata kuliah</th><th className="p-4">Akses pertama</th><th className="p-4">Terakhir</th><th className="p-4">Jumlah</th></tr></thead><tbody>{logs.map((log) => <tr className="border-t" key={log.id}><td className="p-4">{log.nama}<div className="text-xs text-slate-500">NIM {log.nim}</div></td><td className="p-4">{log.mata_kuliah ?? "-"}</td><td className="p-4">{log.akses_pertama_pada}</td><td className="p-4">{log.akses_terakhir_pada}</td><td className="p-4">{log.jumlah_akses}</td></tr>)}{logs.length === 0 && <tr><td className="p-6 text-center text-sm text-slate-400" colSpan={5}>Belum ada akses tercatat.</td></tr>}</tbody></table></div>}</section>
+  </div>
+}
+
+function PengawasanUjianPage({ showToast }: { showToast: (message: string) => void }) {
+  const [requests, setRequests] = useState<PesertaTerkunci[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<number | null>(null)
+  const refresh = async () => setRequests(await fetchPermintaanBukaAkses())
+  useEffect(() => {
+    let alive = true
+    fetchPermintaanBukaAkses().then((items) => { if (alive) setRequests(items) }).catch(() => { if (alive) setRequests([]) }).finally(() => { if (alive) setLoading(false) })
+    return () => { alive = false }
+  }, [])
+  const unlock = async (student: PesertaTerkunci) => {
+    const catatan = window.prompt(`Alasan pembukaan akses untuk ${student.nama} (NIM ${student.nim}):`)
+    if (!catatan?.trim()) return
+    setBusyId(student.id)
+    try { await bukaAksesPeserta(student.id, catatan.trim()); await refresh(); showToast("Akses dibuka. Mahasiswa perlu verifikasi OTP kembali.") }
+    catch (error) { showToast(error instanceof Error ? error.message : "Akses gagal dibuka.") }
+    finally { setBusyId(null) }
+  }
+  return <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5"><h2 className="font-display text-lg font-bold">Permintaan pembukaan akses ujian</h2><p className="mt-1 text-xs text-slate-500">Tinjau permintaan Panitia setelah konfirmasi langsung dengan mahasiswa.</p></div>{loading ? <TableRowsSkeleton rows={3} /> : requests.length === 0 ? <p className="p-5 text-sm text-slate-400">Belum ada permintaan bantuan dari Panitia.</p> : <div className="divide-y divide-slate-100">{requests.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · Pelanggaran {student.pelanggaran_count}/3</div><div className="mt-1 text-xs text-slate-500">Permintaan {student.unlock_requested_at} oleh {student.peminta ?? "Panitia"}</div><div className="mt-1 text-xs text-amber-800">Konfirmasi Panitia: {student.unlock_request_note}</div></div><button className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void unlock(student)}>{busyId === student.id ? "Membuka..." : "Buka akses mahasiswa"}</button></div>)}</div>}</section>
+}
 // (yang selalu tersedia untuk peran Kaprodi — db.bank_soal memang tidak
 // dimuat untuk peran ini). Bersifat read-only.
 function DetailSoalModal({
@@ -1989,10 +2357,11 @@ function DetailSoalModal({
   const statusMeta: Record<string, { label: string; tone: string }> = {
     belum_upload: { label: "Belum Upload", tone: "bg-amber-50 text-amber-700" },
     terkunci: { label: "Terkunci", tone: "bg-amber-50 text-amber-700" },
-    siap_cetak: {
-      label: "Siap Dicetak",
+    siap_ujian: {
+      label: "Disetujui",
       tone: "bg-emerald-50 text-emerald-700",
     },
+    ditolak: { label: "Ditolak", tone: "bg-rose-50 text-rose-700" },
     arsip: { label: "Diarsipkan", tone: "bg-slate-100 text-slate-500" },
   }
   const meta = statusMeta[row.status] ?? {
@@ -2093,13 +2462,9 @@ function DetailSoalModal({
 }
 
 function RecapPage({ showToast }: { showToast: (message: string) => void }) {
-  const { db, currentUser, decideRevisi, refresh } = useDb()
+  const { db, decideRevisi, refresh } = useDb()
   const [deciding, setDeciding] = useState<number | null>(null)
   const [mengirim, setMengirim] = useState(false)
-  const [membuka, setMembuka] = useState<number | null>(null)
-  const [pinBaru, setPinBaru] = useState<string | null>(null)
-  const [showPin, setShowPin] = useState(false)
-  const [resettingPin, setResettingPin] = useState(false)
   const [detail, setDetail] = useState<RekapRow | null>(null)
   const rekap = db.rekap
   const sudahUpload = rekap.filter((r) => r.status !== "belum_upload").length
@@ -2136,12 +2501,11 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
     dosen: r.dosen ?? "-",
     nama_mk: r.nama_mk,
     jadwal: r.jadwal_ujian ? formatTanggal(r.jadwal_ujian) : "-",
-    status: r.status !== "belum_upload" ? "Sudah upload" : "Belum upload",
+    status: ({ terkunci: "Menunggu persetujuan", ditolak: "Ditolak", siap_ujian: "Disetujui", dibuka: "Disetujui", selesai: "Selesai", arsip: "Arsip" } as Record<string, string>)[r.status] ?? (r.status === "belum_upload" ? "Belum upload" : r.status),
     done: r.status !== "belum_upload",
 
-    // Aksi Buka Cetak hanya untuk soal yang sudah diunggah & masih terkunci.
     bankSoalId: r.bank_soal_id,
-    terkunci: r.status === "terkunci",
+    pending: r.status === "terkunci",
 
     // Simpan baris rekap asli agar modal detail bisa dibangun dari sini
     // (db.bank_soal kosong untuk Kaprodi, jadi jangan bergantung padanya).
@@ -2171,89 +2535,6 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
           tone="blue"
           value={String(revisiMenunggu)}
         />
-      </section>
-      <section className="mt-6 overflow-hidden rounded-2xl border border-amber-200/70 bg-gradient-to-r from-amber-50 to-white p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4">
-            <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#202126] text-[#f5cf25]">
-              <Icon name="lock" size={20} />
-            </div>
-            <div>
-              <div className="font-display text-lg font-bold text-slate-900">
-                PIN Cetak Saya
-              </div>
-              <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-500">
-                6 digit otorisasi harian untuk Panitia/TU — berlaku penuh hari
-                ini untuk semua cetakan, kedaluwarsa otomatis besok. PIN hanya
-                ditampilkan sekali setiap reset — catat & teruskan ke Panitia
-                melalui jalur aman.
-              </p>
-              {pinBaru && (
-                <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-amber-200 bg-white px-4 py-3">
-                  <span className="font-mono text-2xl font-bold tracking-[0.3em] text-slate-900">
-                    {showPin ? pinBaru : "••••••"}
-                  </span>
-                  <button
-                    className="rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600"
-                    onClick={() => setShowPin((value) => !value)}
-                    type="button"
-                  >
-                    {showPin ? "Sembunyikan" : "Tampilkan"}
-                  </button>
-                  <button
-                    className="rounded-lg bg-[#202126] px-3 py-1.5 text-[11px] font-bold text-white"
-                    onClick={() => {
-                      void navigator.clipboard?.writeText(pinBaru).then(
-                        () => showToast("PIN Cetak disalin."),
-                        () => showToast("Gagal menyalin PIN."),
-                      )
-                    }}
-                    type="button"
-                  >
-                    Salin
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          <button
-            className="shrink-0 rounded-xl bg-[#202126] px-5 py-3 text-xs font-bold text-white disabled:opacity-60"
-            disabled={resettingPin || !currentUser}
-            onClick={() => {
-              if (!currentUser) return
-              if (
-                !window.confirm(
-                  "Reset PIN Cetak? PIN lama tidak berlaku lagi dan PIN baru hanya tampil sekali.",
-                )
-              )
-                return
-              void (async () => {
-                setResettingPin(true)
-                try {
-                  const pin = await resetUserPin(currentUser.id)
-                  setPinBaru(pin)
-                  setShowPin(true)
-                  showToast(`PIN Cetak baru: ${pin} — catat sekarang.`)
-                } catch (error) {
-                  showToast(
-                    error instanceof Error
-                      ? error.message
-                      : "Gagal mereset PIN Cetak.",
-                  )
-                } finally {
-                  setResettingPin(false)
-                }
-              })()
-            }}
-            type="button"
-          >
-            {resettingPin
-              ? "Mereset..."
-              : pinBaru
-                ? "Reset Ulang PIN"
-                : "Reset & Lihat PIN"}
-          </button>
-        </div>
       </section>
       <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
         <div className="flex flex-col gap-4 border-b border-slate-100 p-6 sm:flex-row sm:items-center sm:justify-between">
@@ -2329,40 +2610,34 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-4">
-                        {row.terkunci && row.bankSoalId != null && (
-                          <button
-                            className="rounded-lg bg-[#202126] px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
-                            disabled={membuka === row.bankSoalId}
-                            onClick={() => {
-                              const soalId = row.bankSoalId
-                              if (soalId == null) return
-                              void (async () => {
-                                setMembuka(soalId)
-                                try {
-                                  const message = await bukaCetak(soalId)
-                                  await refresh()
-                                  // Lonceng notifikasi di AppShell ikut disegarkan
-                                  // seketika — tanpa menunggu polling 30 detik.
-                                  window.dispatchEvent(
-                                    new CustomEvent("ebrankas:notif-updated"),
-                                  )
-                                  showToast(message)
-                                } catch (error) {
-                                  showToast(
-                                    error instanceof Error
-                                      ? error.message
-                                      : "Gagal membuka cetak.",
-                                  )
-                                } finally {
-                                  setMembuka(null)
-                                }
-                              })()
-                            }}
-                          >
-                            {membuka === row.bankSoalId
-                              ? "Membuka..."
-                              : "Buka Cetak"}
-                          </button>
+                        {row.pending && row.bankSoalId != null && (
+                          <>
+                            <button className="rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-700" onClick={async () => {
+                              const tab = window.open("about:blank", "_blank")
+                              try {
+                                const blob = await previewSoalPersetujuan(row.bankSoalId!)
+                                if (!tab) throw new Error("Izinkan popup untuk membuka pratinjau PDF.")
+                                tab.location.href = URL.createObjectURL(blob)
+                              } catch (error) {
+                                tab?.close()
+                                showToast(error instanceof Error ? error.message : "Gagal membuka pratinjau.")
+                              }
+                            }}>Pratinjau PDF</button>
+                            <button className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white" disabled={deciding === row.bankSoalId} onClick={async () => {
+                              setDeciding(row.bankSoalId!)
+                              try { showToast(await putuskanPersetujuanSoal(row.bankSoalId!, "disetujui")); await refresh() }
+                              catch (error) { showToast(error instanceof Error ? error.message : "Gagal menyetujui soal.") }
+                              finally { setDeciding(null) }
+                            }}>Setujui</button>
+                            <button className="rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-700" disabled={deciding === row.bankSoalId} onClick={async () => {
+                              const catatan = window.prompt("Alasan penolakan soal:")
+                              if (catatan === null) return
+                              setDeciding(row.bankSoalId!)
+                              try { showToast(await putuskanPersetujuanSoal(row.bankSoalId!, "ditolak", catatan)); await refresh() }
+                              catch (error) { showToast(error instanceof Error ? error.message : "Gagal menolak soal.") }
+                              finally { setDeciding(null) }
+                            }}>Tolak</button>
+                          </>
                         )}
                         <button
                           className="font-bold text-emerald-700 hover:underline"
@@ -2490,14 +2765,14 @@ function LogsPage({
 }) {
   const { logs, currentUser } = useDb()
   const [mengEkspor, setMengEkspor] = useState(false)
-  // Dosen hanya melihat log miliknya; panitia hanya aktivitas cetak.
+  // Dosen hanya melihat log miliknya; aktivitas QR juga ditampilkan ke panitia.
   const filtered =
     role === "dosen"
       ? logs.filter((log) => log.nama === currentUser?.nama)
       : role === "panitia"
-        ? logs.filter((log) => log.aksi === "Cetak")
+        ? logs.filter((log) => log.aksi.toLowerCase().includes("qr"))
         : logs
-  const totalCetak = filtered.filter((log) => log.aksi === "Cetak").length
+  const totalAksesQr = filtered.filter((log) => log.aksi.toLowerCase().includes("qr")).length
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
@@ -2510,10 +2785,10 @@ function LogsPage({
         />
         <StatCard
           detail="Seluruhnya terverifikasi"
-          icon="printer"
-          label="Aktivitas Cetak"
+          icon="qrcode"
+          label="Aktivitas QR"
           tone="blue"
-          value={String(totalCetak)}
+          value={String(totalAksesQr)}
         />
         <StatCard
           detail="Tidak ada anomali"
@@ -2536,7 +2811,7 @@ function LogsPage({
           <div className="flex gap-2">
             <select className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs">
               <option>Semua aktivitas</option>
-              <option>Cetak</option>
+              <option>Akses QR</option>
               <option>Upload</option>
               <option>Revisi</option>
             </select>
@@ -2702,21 +2977,6 @@ function UsersPage({ showToast }: { showToast: (message: string) => void }) {
     }
   }
 
-  // Reset PIN Cetak — hanya untuk akun Kaprodi; PIN baru ditampilkan sekali.
-  const handleResetPin = async (user: User) => {
-    setBusyId(user.id)
-    try {
-      const pin = await resetUserPin(user.id)
-      showToast(`PIN Cetak ${user.nama} yang baru: ${pin}`)
-    } catch (error) {
-      showToast(
-        error instanceof Error ? error.message : "Gagal reset PIN Cetak.",
-      )
-    } finally {
-      setBusyId(null)
-    }
-  }
-
   return (
     <>
       <section className="flex flex-col justify-between gap-4 rounded-2xl border border-slate-200/80 bg-white p-6 sm:flex-row sm:items-center">
@@ -2793,11 +3053,7 @@ function UsersPage({ showToast }: { showToast: (message: string) => void }) {
                   setEmail("")
                   setNidn("")
                   setAdding(false)
-                  showToast(
-                    created.pinCetak
-                      ? `Pengguna ${created.user.nama} ditambahkan. Kata sandi awal: ${created.password} · PIN Cetak: ${created.pinCetak}`
-                      : `Pengguna ${created.user.nama} ditambahkan. Kata sandi awal: ${created.password}`,
-                  )
+                  showToast(`Pengguna ${created.user.nama} ditambahkan. Kata sandi awal: ${created.password}`)
                 } catch (error) {
                   showToast(
                     error instanceof Error
@@ -2943,15 +3199,6 @@ function UsersPage({ showToast }: { showToast: (message: string) => void }) {
                       >
                         Reset Password
                       </button>
-                      {user.role === "kaprodi" && (
-                        <button
-                          className="font-bold text-amber-700 disabled:opacity-50"
-                          disabled={busyId === user.id}
-                          onClick={() => void handleResetPin(user)}
-                        >
-                          Reset PIN Cetak
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -3032,8 +3279,10 @@ function MataKuliahPage({
         await createMataKuliah(payload)
         showToast(`Mata kuliah ${payload.nama_mk} ditambahkan.`)
       }
-      await refresh()
       resetForm()
+      // Simpan sudah berhasil di server. Refresh data pendukung di latar
+      // belakang supaya formulir tidak terus berputar jika endpoint lain lambat.
+      void refresh().catch(() => {})
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "Gagal menyimpan mata kuliah.",
@@ -3246,21 +3495,21 @@ function MyQuestionsPage({
   const [alasanRevisi, setAlasanRevisi] = useState("")
   const [fileRevisi, setFileRevisi] = useState<File | null>(null)
   const [kirimRevisi, setKirimRevisi] = useState(false)
-  const terkunci = soal.filter(
-    (s) => s.status === "terkunci" || s.status === "siap_cetak",
-  ).length
+  const terkunci = soal.filter((s) => s.status === "terkunci").length
   // Daftar soal dosen dipetakan langsung dari bank_soal miliknya.
   const questions = soal.map((s) => ({
     name: s.nama_mk,
     meta: `${s.kode_mk} · Kelas ${s.kelas}`,
     type: s.jenis,
     state:
-      s.status === "siap_cetak"
-        ? "Siap cetak"
+      s.status === "siap_ujian"
+        ? "Disetujui"
+        : s.status === "ditolak"
+          ? "Ditolak"
         : s.status === "arsip"
           ? "Diarsipkan"
-          : "Terkunci",
-    isTerkunci: s.status === "terkunci" || s.status === "siap_cetak",
+          : "Menunggu persetujuan",
+    isTerkunci: s.status === "terkunci" || s.status === "ditolak" || s.status === "siap_ujian",
     date: formatTanggal(s.jadwal_ujian),
     id: s.id,
   }))
@@ -3282,11 +3531,11 @@ function MyQuestionsPage({
           value={String(terkunci)}
         />
         <StatCard
-          detail="Siap dicetak panitia"
-          icon="printer"
-          label="Siap Cetak"
+          detail="Disetujui Kaprodi"
+          icon="qrcode"
+          label="Disetujui"
           tone="gold"
-          value={String(soal.filter((s) => s.status === "siap_cetak").length)}
+          value={String(soal.filter((s) => s.status === "siap_ujian").length)}
         />
       </section>
       <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
@@ -4015,7 +4264,9 @@ function KelolaPrinterSection({
 
       <div className="divide-y divide-slate-100">
         {memuat ? (
-          <p className="p-6 text-sm text-slate-400">Memuat daftar printer...</p>
+          <div role="status" aria-label="Memuat daftar printer" className="divide-y divide-slate-100 animate-pulse">
+            {[0, 1, 2].map((row) => <div className="flex items-center gap-3 p-5" key={row}><SkeletonBlock className="size-10 rounded-xl" /><div className="flex-1 space-y-2"><SkeletonBlock className="h-4 w-1/3" /><SkeletonBlock className="h-3 w-1/2" /></div><SkeletonBlock className="h-7 w-20" /></div>)}
+          </div>
         ) : printers.length === 0 ? (
           <p className="p-6 text-sm text-slate-400">
             Belum ada printer terdaftar. Tambahkan printer agar panitia bisa
@@ -4083,11 +4334,12 @@ function KelolaPrinterSection({
 }
 
 function ServerPage({ showToast }: { showToast: (message: string) => void }) {
+  // Komponen pengelolaan printer lama tidak lagi ditampilkan di halaman Admin IT.
+  void KelolaPrinterSection
   const services = [
     ["Application Server", "192.168.1.10", "Aktif", "12 ms"],
     ["Database MySQL", "localhost:3306", "Aktif", "4 ms"],
     ["Encrypted Storage", "/secure/exams", "Aktif", "42% terpakai"],
-    ["Printer Gateway", "192.168.1.50", "Aktif", "Siap menerima"],
   ]
   return (
     <>
@@ -4103,7 +4355,6 @@ function ServerPage({ showToast }: { showToast: (message: string) => void }) {
           </div>
         </div>
       </div>
-      <KelolaPrinterSection showToast={showToast} />
       <section className="mt-6 grid gap-4 sm:grid-cols-3">
         <StatCard
           detail="Berjalan normal"
@@ -4191,7 +4442,7 @@ function HelpPanel({ role, onClose }: HelpPanelProps) {
       steps: [
         "Pilih mata kuliah dan lengkapi jadwal ujian.",
         "Unggah satu file PDF final, maksimal 10 MB.",
-        "Periksa kembali lalu pilih Enkripsi & Kunci Soal.",
+        "Periksa kembali lalu pilih Enkripsi & Ajukan Persetujuan.",
       ],
       limit:
         "Anda hanya dapat melihat soal milik sendiri. Revisi setelah dikunci harus disetujui Kaprodi.",
@@ -4209,20 +4460,20 @@ function HelpPanel({ role, onClose }: HelpPanelProps) {
     },
     panitia: {
       title: "Panduan untuk Panitia / TU",
-      description: "Cetak soal tanpa menyimpan file di perangkat.",
+      description: "Bagikan soal melalui QR; jawaban tetap di kertas.",
       steps: [
-        "Pilih soal berstatus Siap dicetak sesuai jadwal.",
-        "Pastikan jumlah salinan sama dengan jumlah peserta.",
-        "Masukkan PIN Cetak 6 digit dari Kaprodi lalu kirim ke printer tujuan.",
+        "Buat sesi dari soal yang sudah disetujui Kaprodi.",
+        "Atur waktu mulai dan waktu selesai ujian.",
+        "Tampilkan QR di ruang ujian dan siapkan lembar jawaban kertas.",
       ],
       limit:
-        "File tidak dapat diunduh. Nama petugas dan waktu cetak menjadi watermark otomatis.",
+        "Akses PDF hanya tersedia selama sesi aktif. Viewer tidak menghilangkan risiko foto atau screenshot.",
     },
     admin: {
       title: "Panduan untuk Admin IT",
       description: "Jaga layanan tetap aktif tanpa mengakses isi soal.",
       steps: [
-        "Pantau server, database, penyimpanan, dan printer gateway.",
+        "Pantau server, database, dan penyimpanan.",
         "Kelola akun serta role berdasarkan permintaan resmi.",
         "Periksa log sistem jika muncul peringatan layanan.",
       ],
@@ -4371,17 +4622,18 @@ function GeometricLoading({ fading = false }: { fading?: boolean }) {
 }
 
 function AppShell() {
-  const { db, currentUser, exams, loading, login, logout, print } = useDb()
+  const { currentUser, loading, login, logout } = useDb()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [active, setActive] = useState("Dashboard")
-  const [search, setSearch] = useState("")
-  const [status, setStatus] = useState("Semua status")
-  const [selectedExam, setSelectedExam] = useState<ExamView | null>(null)
   const [toast, setToast] = useState("")
   const [helpOpen, setHelpOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifs, setNotifs] = useState<Notifikasi[]>([])
   const [unread, setUnread] = useState(0)
+
+  useEffect(() => {
+    enableNotificationSounds()
+  }, [])
   const loggedIn = currentUser != null
   const role = currentUser?.role ?? "panitia"
   const safeRole = normalizeRole(role)
@@ -4447,17 +4699,17 @@ function AppShell() {
   }
 
   // Tentukan halaman tujuan saat notifikasi diklik. Backend mengirim `tautan`
-  // berupa label halaman (mis. "Rekap Soal", "Antrian Cetak", "Soal Saya").
+  // berupa label halaman (mis. "Rekap Soal", "Sesi Ujian", "Soal Saya").
   // Navigasi hanya dilakukan bila halaman itu benar-benar ada di menu peran
   // pengguna; jika tidak persis cocok, pakai pemetaan cadangan (mis. Kaprodi
-  // tidak punya menu "Log Cetak" -> diarahkan ke "Log & Berita Acara").
+  // tidak punya menu tujuan -> diarahkan ke halaman yang tersedia).
   const notifTarget = (tautan: string | null): string | null => {
     if (!tautan) return null
     const allowed = new Set(roleMeta[safeRole].nav.map((m) => m.label))
     if (allowed.has(tautan)) return tautan
     const fallback: Record<string, string> = {
       "Log Cetak": "Log & Berita Acara",
-      "Antrian Cetak": "Log & Berita Acara",
+      "Antrian Cetak": "Sesi Ujian",
       "Rekap Soal": "Log & Berita Acara",
       "Approval Revisi": "Log & Berita Acara",
     }
@@ -4479,18 +4731,6 @@ function AppShell() {
     markAllNotifikasiRead().catch(() => refreshNotifs())
   }
 
-  const filteredExams = useMemo(
-    () =>
-      exams.filter(
-        (exam) =>
-          (status === "Semua status" || exam.status === status) &&
-          `${exam.course} ${exam.code} ${exam.lecturer}`
-            .toLowerCase()
-            .includes(search.toLowerCase()),
-      ),
-    [search, status, exams],
-  )
-
   const pageInfo: Record<string, [string, string]> = {
     Dashboard: ["Dashboard", "Ringkasan pengelolaan soal ujian FEB"],
     "Upload Soal": ["Upload Soal", "Unggah dan kunci soal ujian final"],
@@ -4500,15 +4740,18 @@ function AppShell() {
       "Approval Revisi",
       "Tinjau permintaan pembukaan kunci dari dosen",
     ],
-    "Antrian Cetak": [
-      "Antrian Cetak Soal",
-      "Kelola dokumen ujian yang siap dicetak dengan aman",
-    ],
+    "Sesi Ujian": ["Sesi Ujian Online", "Distribusi soal melalui QR Code"],
+    "Log Akses Ujian": ["Log Akses Ujian", "Riwayat akses mahasiswa ke naskah ujian"],
+    "Pengawasan Ujian": ["Pengawasan Ujian", "Tinjau permintaan pembukaan akses mahasiswa"],
     "Log & Berita Acara": [
       "Log & Berita Acara",
       "Audit aktivitas dan dokumen pertanggungjawaban",
     ],
     "Manajemen User": ["Manajemen User", "Kelola akun dan hak akses pengguna"],
+    "Template Soal": [
+      "Template Soal",
+      "Kelola template format soal untuk referensi dosen",
+    ],
     "Master Mata Kuliah": [
       "Master Mata Kuliah",
       "Kelola referensi mata kuliah (tambah, ubah, hapus)",
@@ -4518,7 +4761,6 @@ function AppShell() {
       "Pantau layanan tanpa mengakses isi soal",
     ],
     "Log Aktivitas": ["Log Aktivitas Saya", "Riwayat aktivitas akun dosen"],
-    "Log Cetak": ["Log Cetak", "Riwayat pencetakan soal oleh Panitia/TU"],
     "Log Sistem": ["Log Sistem", "Audit keamanan dan kesehatan layanan"],
   }
   const currentPage = pageInfo[active] ?? pageInfo.Dashboard
@@ -4540,6 +4782,10 @@ function AppShell() {
 
   const showToast = (message: string) => {
     setToast(message)
+    // Bunyi hanya untuk hasil/aksi berhasil; validasi dan error tetap senyap.
+    if (!/(gagal|error|wajib|belum|tidak|pilih|harus|maksimal|kedaluwarsa|tercapai|salah)/i.test(message)) {
+      playNotificationSound()
+    }
     window.setTimeout(() => setToast(""), 2800)
   }
 
@@ -4715,6 +4961,7 @@ function AppShell() {
             <DashboardPage navigate={setActive} role={safeRole} />
           )}
           {active === "Upload Soal" && <UploadPage showToast={showToast} />}
+          {active === "Template Soal" && <TemplatePage showToast={showToast} />}
           {active === "Soal Saya" && <MyQuestionsPage showToast={showToast} />}
           {active === "Rekap Soal" && <RecapPage showToast={showToast} />}
           {active === "Approval Revisi" && (
@@ -4732,243 +4979,9 @@ function AppShell() {
             <MataKuliahPage showToast={showToast} />
           )}
 
-          {active === "Antrian Cetak" && (
-            <>
-              <section className="mb-7 overflow-hidden rounded-[2rem] border border-black/5 bg-white px-6 py-7 text-slate-900 shadow-[0_18px_50px_rgba(32,33,38,0.05)] sm:px-8">
-                <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
-                  <div>
-                    <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#f5cf25] px-3 py-1.5 text-[11px] font-bold tracking-wide text-[#202126]">
-                      <Icon name="lock" size={14} />
-                      MODE CETAK AMAN
-                    </div>
-                    <div className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                      Selamat bertugas,{" "}
-                      {(currentUser?.nama ?? "").split(/[,.]/)[0].trim() ||
-                        "Panitia"}
-                      .
-                    </div>
-                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
-                      Ada{" "}
-                      <strong className="font-semibold text-slate-900">
-                        {filteredExams.filter((e) => e.print_ready).length} soal
-                        ujian
-                      </strong>{" "}
-                      yang sudah dapat dicetak hari ini. Pastikan jumlah cetak
-                      sesuai dengan peserta terdaftar.
-                    </p>
-                  </div>
-                </div>
-              </section>
-              <section className="mb-6 grid gap-3 md:grid-cols-3">
-                {[
-                  ["1", "Pilih soal", "Hanya yang berstatus siap dicetak"],
-                  ["2", "Cek jumlah", "Samakan dengan jumlah peserta"],
-                  ["3", "Masukkan PIN Cetak", "6 digit harian dari Kaprodi"],
-                ].map(([number, title, detail]) => (
-                  <div
-                    className="flex items-center gap-3 rounded-2xl bg-white p-4"
-                    key={number}
-                  >
-                    <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#202126] text-xs font-bold text-[#f5cf25]">
-                      {number}
-                    </span>
-                    <div>
-                      <div className="text-xs font-bold text-slate-800">
-                        {title}
-                      </div>
-                      <div className="mt-0.5 text-[10px] text-slate-400">
-                        {detail}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </section>
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard
-                  detail={`${exams.filter((e) => e.print_ready).length} siap dicetak sekarang`}
-                  icon="file"
-                  label="Total Antrian"
-                  tone="green"
-                  value={String(exams.length)}
-                />
-                <StatCard
-                  detail={`${db.log_cetak.length} sesi percetakan`}
-                  icon="printer"
-                  label="Total Percetakan"
-                  tone="blue"
-                  value={String(
-                    db.log_cetak.reduce((sum, l) => sum + l.jumlah_cetak, 0),
-                  )}
-                />
-                <StatCard
-                  detail="Menunggu waktu akses"
-                  icon="clock"
-                  label="Terjadwal"
-                  tone="gold"
-                  value={String(exams.filter((e) => !e.print_ready).length)}
-                />
-                <StatCard
-                  detail="Semua aktivitas tercatat"
-                  icon="shield"
-                  label="Status Keamanan"
-                  tone="green"
-                  value="Aman"
-                />
-              </section>
-
-              <section className="mt-7 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_8px_30px_rgba(15,45,43,0.035)]">
-                <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
-                  <div>
-                    <div className="font-display text-lg font-bold text-slate-900">
-                      Daftar Soal Ujian
-                    </div>
-                    <p className="mt-1 text-xs text-slate-400">
-                      Soal hanya dapat dicetak sesuai jadwal akses yang
-                      ditentukan
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-2 sm:flex-row">
-                    <div className="relative">
-                      <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                        <Icon name="search" size={17} />
-                      </span>
-                      <input
-                        className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-xs outline-none transition focus:border-slate-900 focus:bg-white sm:w-64"
-                        onChange={(event) => setSearch(event.target.value)}
-                        placeholder="Cari mata kuliah..."
-                        value={search}
-                      />
-                    </div>
-                    <select
-                      className="h-10 rounded-xl border border-slate-200 bg-slate-50 px-3 text-xs text-slate-600 outline-none focus:border-slate-900"
-                      onChange={(event) => setStatus(event.target.value)}
-                      value={status}
-                    >
-                      <option>Semua status</option>
-                      <option>Siap dicetak</option>
-                      <option>Terjadwal</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[920px] text-left">
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50/60 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                        <th className="px-6 py-3.5">Mata kuliah</th>
-                        <th className="px-4 py-3.5">Jenis</th>
-                        <th className="px-4 py-3.5">Jadwal ujian</th>
-                        <th className="px-4 py-3.5">Peserta</th>
-                        <th className="px-4 py-3.5">Status akses</th>
-                        <th className="px-6 py-3.5 text-right">Tindakan</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredExams.map((exam) => {
-                        const ready = exam.status === "Siap dicetak"
-                        return (
-                          <tr
-                            className="border-b border-slate-100 transition last:border-0 hover:bg-slate-50/60"
-                            key={exam.id}
-                          >
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className="grid size-10 place-items-center rounded-xl bg-emerald-50 text-emerald-700">
-                                  <Icon name="document" size={19} />
-                                </div>
-                                <div>
-                                  <div className="text-sm font-bold text-slate-800">
-                                    {exam.course}
-                                  </div>
-                                  <div className="mt-1 text-[11px] text-slate-400">
-                                    {exam.code} · {exam.lecturer}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <span className="rounded-md bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-600">
-                                {exam.type}
-                              </span>
-                              <span className="ml-1.5 text-xs text-slate-500">
-                                Kelas {exam.className}
-                              </span>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                                <Icon name="calendar" size={15} />
-                                {exam.date}
-                              </div>
-                              <div className="mt-1.5 flex items-center gap-2 pl-0.5 text-[11px] text-slate-400">
-                                <Icon name="clock" size={14} />
-                                {exam.time} WIB
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="text-sm font-bold text-slate-700">
-                                {exam.students}
-                              </div>
-                              <div className="text-[10px] text-slate-400">
-                                mahasiswa
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div
-                                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                                  ready
-                                    ? "bg-emerald-50 text-emerald-700"
-                                    : "bg-amber-50 text-amber-700"
-                                }`}
-                              >
-                                <span
-                                  className={`size-1.5 rounded-full ${
-                                    ready ? "bg-emerald-500" : "bg-amber-500"
-                                  }`}
-                                />
-                                {exam.status}
-                              </div>
-                              <div className="mt-1.5 text-[10px] text-slate-400">
-                                {exam.window}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <button
-                                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition ${
-                                  ready
-                                    ? "bg-[#202126] text-white shadow-sm hover:bg-[#111216]"
-                                    : "cursor-not-allowed bg-slate-100 text-slate-400"
-                                }`}
-                                disabled={!ready}
-                                onClick={() => setSelectedExam(exam)}
-                              >
-                                <Icon
-                                  name={ready ? "printer" : "lock"}
-                                  size={15}
-                                />
-                                {ready ? "Cetak Soal" : "Terkunci"}
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                  {filteredExams.length === 0 && (
-                    <div className="p-12 text-center text-sm text-slate-400">
-                      Tidak ada soal yang sesuai pencarian.
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-100 px-6 py-4 text-[11px] text-slate-400">
-                  <span>
-                    Menampilkan {filteredExams.length} dari {exams.length}{" "}
-                    antrian
-                  </span>
-                  <span>Data langsung dari server</span>
-                </div>
-              </section>
-            </>
-          )}
+          {active === "Sesi Ujian" && <SesiUjianPage showToast={showToast} />}
+          {active === "Log Akses Ujian" && <LogAksesUjianPage showToast={showToast} />}
+          {active === "Pengawasan Ujian" && <PengawasanUjianPage showToast={showToast} />}
 
           <footer className="flex flex-col gap-2 px-1 py-7 text-[11px] text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <span>
@@ -4981,16 +4994,7 @@ function AppShell() {
         </div>
       </main>
 
-      <PrintModal
-        exam={selectedExam}
-        onClose={() => setSelectedExam(null)}
-        onPrint={async (jumlahCetak, pin, printerId) => {
-          if (selectedExam) {
-            return print(selectedExam.id, jumlahCetak, pin, printerId)
-          }
-        }}
-      />
-      {helpOpen && (
+            {helpOpen && (
         <HelpPanel role={safeRole} onClose={() => setHelpOpen(false)} />
       )}
       {toast && (
@@ -5014,6 +5018,10 @@ export default function App() {
   useEffect(() => {
     document.title = JUDUL_DOKUMEN
   }, [])
+
+  const studentRoute = window.location.hash.match(/^#\/akses\/([^/?#]+)/)
+  const studentToken = studentRoute?.[1] ? decodeURIComponent(studentRoute[1]) : null
+  if (studentToken) return <Suspense fallback={<main className="student-shell"><header className="student-brand"><span className="student-mark">S</span><span><b>SIKASA</b><small>Sistem Informasi Keamanan Soal Akademik · FEB</small></span></header><div aria-label="Memuat halaman akses soal" role="status" className="animate-pulse space-y-4"><SkeletonBlock className="h-8 w-56" /><SkeletonBlock className="h-40 w-full rounded-2xl" /><SkeletonBlock className="h-28 w-full rounded-2xl" /></div></main>}><StudentAccess token={studentToken} /></Suspense>
 
   return (
     <DbProvider>

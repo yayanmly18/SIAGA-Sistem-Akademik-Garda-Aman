@@ -82,15 +82,15 @@ export interface BankSoal {
 
   judul: string
 
-  status: "terkunci" | "siap_cetak" | "arsip"
+  status: "terkunci" | "ditolak" | "siap_ujian" | "arsip"
 
   jadwal_ujian: string
 
-  waktu_mulai_cetak: string | null
+  waktu_mulai_ujian: string | null
 
   jumlah_mahasiswa: number
 
-  file_path: string
+  file_path: string | null
 
   // Denormalisasi dari join server (mataKuliah + dosen)
 
@@ -102,9 +102,6 @@ export interface BankSoal {
 
   dosen: string
 
-  print_ready: boolean
-
-  window: string
 }
 
 // d. Tabel `log_aktivitas` (ANTI BOCOR) — baris dari GET /log/aktivitas
@@ -139,6 +136,10 @@ export interface RekapRow {
   bank_soal_id: number | null
 
   status: string
+
+  judul?: string | null
+
+  catatan_persetujuan?: string | null
 
   jenis: string | null
 
@@ -229,6 +230,8 @@ export interface Database {
 
   bank_soal: BankSoal[]
 
+  template_soal: TemplateSoal[]
+
   log_aktivitas: LogAktivitas[]
 
   rekap: RekapRow[]
@@ -249,6 +252,8 @@ export function emptyDatabase(): Database {
     mata_kuliah: [],
 
     bank_soal: [],
+
+    template_soal: [],
 
     log_aktivitas: [],
 
@@ -437,33 +442,9 @@ interface ApiSoal {
 
   jadwal_ujian?: string | null
 
-  waktu_mulai_cetak?: string | null
+  waktu_mulai_ujian?: string | null
 
-  file_path: string
-}
-
-// CetakController::antrian() — baris antrian untuk Panitia/TU
-
-interface ApiAntrian {
-  id: number
-
-  kode_mk?: string | null
-
-  nama_mk?: string | null
-
-  kelas?: string | null
-
-  dosen?: string | null
-
-  jenis: "UTS" | "UAS"
-
-  jadwal_ujian?: string | null
-
-  jumlah_mahasiswa: number
-
-  status_cetak: string
-
-  alasan?: string | null
+  file_path: string | null
 }
 
 // LogController::aktivitas()
@@ -554,127 +535,20 @@ export function normalizeDateTime(value: string | null | undefined): string {
   return value.trim().replace(" ", "T")
 }
 
-// Hitung print_ready + teks jendela cetak dari status & waktu_mulai_cetak.
-
-function resolvePrintWindow(
-  status: string,
-
-  waktuMulai: string | null | undefined,
-): {
-  print_ready: boolean
-  window: string
-} {
-  if (status === "arsip") {
-    return {
-      print_ready: false,
-
-      window: "Diarsipkan permanen",
-    }
-  }
-
-  if (status !== "siap_cetak") {
-    return {
-      print_ready: false,
-
-      window: "Menunggu pembukaan Kaprodi",
-    }
-  }
-
-  const mulai = normalizeDateTime(waktuMulai)
-
-  if (!mulai) {
-    return {
-      print_ready: false,
-
-      window: "Jadwal buka cetak belum diatur",
-    }
-  }
-
-  if (Date.now() < new Date(mulai).getTime()) {
-    return {
-      print_ready: false,
-
-      window: `Bisa dicetak ${formatTanggal(mulai)} ${formatJam(mulai)}`,
-    }
-  }
-
-  return { print_ready: true, window: "Jendela cetak terbuka" }
-}
-
 export function toUiSoal(api: ApiSoal): BankSoal {
-  const { print_ready, window } = resolvePrintWindow(
-    api.status,
-
-    api.waktu_mulai_cetak,
-  )
-
   return {
     id: api.id,
-
     jenis: api.jenis,
-
     judul: api.judul,
-
-    status:
-      "siap_cetak" === api.status
-        ? "siap_cetak"
-        : api.status === "arsip"
-          ? "arsip"
-          : "terkunci",
-
+    status: api.status === "ditolak" || api.status === "siap_ujian" || api.status === "arsip" ? api.status : "terkunci",
     jadwal_ujian: normalizeDateTime(api.jadwal_ujian),
-
-    waktu_mulai_cetak: normalizeDateTime(api.waktu_mulai_cetak) || null,
-
+    waktu_mulai_ujian: normalizeDateTime(api.waktu_mulai_ujian) || null,
     jumlah_mahasiswa: api.jumlah_mahasiswa,
-
-    file_path: api.file_path,
-
+    file_path: api.file_path ?? null,
     kode_mk: api.kode_mk ?? "-",
-
     nama_mk: api.nama_mk ?? "-",
-
     kelas: api.kelas ?? "-",
-
     dosen: "-",
-
-    print_ready,
-
-    window,
-  }
-}
-
-export function toUiAntrian(api: ApiAntrian): BankSoal {
-  const bisaCetak = api.status_cetak === "bisa_cetak"
-
-  return {
-    id: api.id,
-
-    jenis: api.jenis,
-
-    judul: api.nama_mk ?? "-",
-
-    status: "siap_cetak",
-
-    jadwal_ujian: normalizeDateTime(api.jadwal_ujian),
-
-    waktu_mulai_cetak: null,
-
-    jumlah_mahasiswa: api.jumlah_mahasiswa,
-
-    file_path: "",
-
-    kode_mk: api.kode_mk ?? "-",
-
-    nama_mk: api.nama_mk ?? "-",
-
-    kelas: api.kelas ?? "-",
-
-    dosen: api.dosen ?? "-",
-
-    print_ready: bisaCetak,
-
-    window: bisaCetak ? "Jendela cetak terbuka" : (api.alasan ?? "Terkunci"),
   }
 }
 
@@ -831,6 +705,18 @@ export async function loadDatabase(): Promise<Database> {
       })
 
       .catch(() => {}),
+
+    // Semua role terautentikasi bisa melihat daftar template soal.
+    apiFetch<{ data: TemplateSoal[] }>("/template-soal")
+
+      .then((res) => {
+        db.template_soal = (res.data ?? []).map((t) => ({
+          ...t,
+          created_at: normalizeDateTime(t.created_at) ?? null,
+        }))
+      })
+
+      .catch(() => {}),
   ]
 
   if (me.role === "dosen") {
@@ -839,16 +725,6 @@ export async function loadDatabase(): Promise<Database> {
 
         .then((res) => {
           db.bank_soal = (res.data ?? []).map(toUiSoal)
-        })
-
-        .catch(() => {}),
-    )
-  } else if (me.role === "panitia") {
-    jobs.push(
-      apiFetch<{ data: ApiAntrian[] }>("/antrian-cetak")
-
-        .then((res) => {
-          db.bank_soal = (res.data ?? []).map(toUiAntrian)
         })
 
         .catch(() => {}),
@@ -896,6 +772,24 @@ export interface UploadSoalInput {
   jumlahMahasiswa: number
 
   file: File
+
+  templateSoalId?: number | null
+}
+
+export interface TemplateSoal {
+  id: number
+
+  nama_template: string
+
+  deskripsi: string | null
+
+  file_path: string | null
+
+  created_by: number | null
+
+  pembuat_nama: string | null
+
+  created_at: string | null
 }
 
 export interface NewUserInput {
@@ -927,6 +821,10 @@ export async function createBankSoal(
 
   form.append("jadwal_ujian", input.jadwalUjian.replace("T", " "))
 
+  if (input.templateSoalId != null) {
+    form.append("template_soal_id", String(input.templateSoalId))
+  }
+
   form.append("file", input.file)
 
   const res = await apiFetch<{ data: ApiSoal }>("/soal", {
@@ -936,6 +834,66 @@ export async function createBankSoal(
   })
 
   return toUiSoal(res.data)
+}
+
+// --- Template Soal (Admin IT upload, semua role lihat & unduh) ---
+
+export interface TemplateSoalInput {
+  nama_template: string
+
+  deskripsi?: string | null
+
+  file: File
+}
+
+export async function fetchTemplateSoal(): Promise<TemplateSoal[]> {
+  const res = await apiFetch<{ data: TemplateSoal[] }>("/template-soal", {
+    method: "GET",
+  })
+  return res.data ?? []
+}
+
+export async function createTemplateSoal(
+  input: TemplateSoalInput,
+): Promise<TemplateSoal> {
+  const form = new FormData()
+
+  form.append("nama_template", input.nama_template)
+  if (input.deskripsi != null) {
+    form.append("deskripsi", input.deskripsi)
+  }
+  form.append("file", input.file)
+
+  const res = await apiFetch<{ data: TemplateSoal }>("/template-soal", {
+    method: "POST",
+    body: form,
+  })
+  return res.data
+}
+
+export async function deleteTemplateSoal(id: number): Promise<void> {
+  await apiFetch<{ message: string }>(`/template-soal/${id}`, {
+    method: "DELETE",
+  })
+}
+
+// Unduh file template (balas sebagai blob agar bisa disimpan ke perangkat).
+export async function downloadTemplateSoal(id: number): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/template-soal/${id}/download`, {
+    method: "GET",
+    headers: {
+      Accept: "*/*",
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+    },
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => "")
+    throw new ApiError(
+      res.status,
+      text || `Unduhan gagal (HTTP ${res.status}).`,
+    )
+  }
+  return res.blob()
 }
 
 export interface PrintResult {
@@ -1270,62 +1228,187 @@ export function formatJam(iso: string): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
 }
 
-export interface ExamView {
-  id: number
+// ----------------------------------------------------------------------------
+// Status Server (Admin IT) — metrik nyata dari GET /server-status.
+// ----------------------------------------------------------------------------
 
-  code: string
+export interface ServerLayanan {
+  nama: string
 
-  course: string
+  alamat: string
 
-  lecturer: string
+  status: "aktif" | "tertutup" | "periksa"
 
-  className: string
-
-  type: "UTS" | "UAS"
-
-  date: string
-
-  time: string
-
-  students: number
-
-  status: string
-
-  window: string
-
-  print_ready: boolean
+  detail: string
 }
 
-// bank_soal (sudah denormalisasi oleh mapper) → bentuk "exam" untuk kartu
+export interface ServerStatus {
+  cpuPersen: number | null
 
-// antrian cetak.
+  memoriPersen: number | null
 
-export function toExamViews(db: Database): ExamView[] {
-  return db.bank_soal.map((soal) => ({
-    id: soal.id,
+  memoriTerpakai: number | null
 
-    code: soal.kode_mk,
+  memoriTotal: number | null
 
-    course: soal.nama_mk,
+  diskPersen: number
 
-    lecturer: soal.dosen,
+  diskTerpakai: number
 
-    className: soal.kelas,
+  diskTotal: number
 
-    type: soal.jenis,
+  backupStatus: "sukses" | "gagal" | "belum"
 
-    date: formatTanggal(soal.jadwal_ujian),
+  backupWaktu: string | null
 
-    time: formatJam(soal.jadwal_ujian),
+  backupUkuran: number | null
 
-    students: soal.jumlah_mahasiswa,
+  backupJadwal: string
 
-    status: soal.print_ready ? "Siap dicetak" : "Terjadwal",
+  layanan: ServerLayanan[]
 
-    window: soal.window,
+  waktuServer: string
+}
 
-    print_ready: soal.print_ready,
-  }))
+interface ApiServerStatus {
+  cpu?: { persen?: number | null } | null
+
+  memori?: {
+    total?: number | null
+    tersedia?: number | null
+    persen?: number | null
+  } | null
+
+  disk?: { total?: number; tersedia?: number; terpakai?: number; persen?: number } | null
+
+  layanan?: ServerLayanan[] | null
+
+  backup?: {
+    status?: string
+    waktu?: string | null
+    ukuran?: number | null
+    jadwal?: string | null
+  } | null
+
+  waktu_server?: string
+}
+
+function statusLayanan(mentah: unknown): "aktif" | "tertutup" | "periksa" {
+  return mentah === "aktif" || mentah === "tertutup" ? mentah : "periksa"
+}
+
+export function toServerStatus(res: ApiServerStatus): ServerStatus {
+  const total = typeof res.memori?.total === "number" ? res.memori.total : null
+  const tersedia =
+    typeof res.memori?.tersedia === "number" ? res.memori.tersedia : null
+  const terpakai =
+    total !== null && tersedia !== null
+      ? Math.max(0, total - tersedia)
+      : null
+
+  const backupStatus =
+    res.backup?.status === "sukses" || res.backup?.status === "gagal"
+      ? res.backup.status
+      : "belum"
+
+  return {
+    cpuPersen: typeof res.cpu?.persen === "number" ? res.cpu.persen : null,
+
+    memoriPersen:
+      typeof res.memori?.persen === "number" ? res.memori.persen : null,
+
+    memoriTerpakai: terpakai,
+
+    memoriTotal: total,
+
+    diskPersen: res.disk?.persen ?? 0,
+
+    diskTerpakai: res.disk?.terpakai ?? 0,
+
+    diskTotal: res.disk?.total ?? 0,
+
+    backupStatus,
+
+    backupWaktu: res.backup?.waktu ?? null,
+
+    backupUkuran:
+      typeof res.backup?.ukuran === "number" ? res.backup.ukuran : null,
+
+    backupJadwal: res.backup?.jadwal ?? "02:00",
+
+    layanan: (res.layanan ?? []).map((layanan) => ({
+      nama: layanan.nama,
+
+      alamat: layanan.alamat,
+
+      status: statusLayanan(layanan.status),
+
+      detail: layanan.detail,
+    })),
+
+    waktuServer: res.waktu_server ?? "",
+  }
+}
+
+// GET /server-status (khusus Admin IT) — melempar ApiError bila gagal agar UI
+// menampilkan galat jujur, bukan angka palsu.
+export async function fetchServerStatus(): Promise<ServerStatus> {
+  return toServerStatus(await apiFetch<ApiServerStatus>("/server-status"))
+}
+
+// POST /server-status/backup — jalankan backup sekarang, kembalikan status baru.
+export async function jalankanBackup(): Promise<ServerStatus> {
+  const res = await apiFetch<{ backup: ApiServerStatus["backup"] }>(
+    "/server-status/backup",
+    { method: "POST" },
+  )
+
+  return toServerStatus({ backup: res.backup })
+}
+
+// Format ukuran byte ala Indonesia: "3,1 GB dari 8 GB". null → "—".
+export function formatUkuran(bytes: number | null): string {
+  if (bytes === null || !Number.isFinite(bytes) || bytes < 0) return "—"
+
+  if (bytes < 1024) return `${bytes} B`
+
+  const satuan = ["KB", "MB", "GB", "TB"]
+  let nilai = bytes / 1024
+  let indeks = 0
+
+  while (nilai >= 1024 && indeks < satuan.length - 1) {
+    nilai /= 1024
+    indeks += 1
+  }
+
+  const teks =
+    nilai >= 100
+      ? String(Math.round(nilai))
+      : String(Math.round(nilai * 10) / 10).replace(".", ",")
+
+  return `${teks} ${satuan[indeks]}`
+}
+
+// Label relatif backup: "hari ini" / "kemarin" / tanggal. null → "".
+export function labelHariBackup(waktuIso: string | null): string {
+  if (!waktuIso) return ""
+
+  const d = new Date(waktuIso)
+
+  if (Number.isNaN(d.getTime())) return ""
+
+  const sekarang = new Date()
+  const awalHari = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  const selisihHari = Math.round(
+    (awalHari(sekarang) - awalHari(d)) / 86_400_000,
+  )
+
+  if (selisihHari <= 0) return "hari ini"
+
+  if (selisihHari === 1) return "kemarin"
+
+  return formatTanggal(waktuIso)
 }
 
 export interface LogRow {
@@ -1373,6 +1456,24 @@ export function labelAksi(aksi: string): string {
 
     case "buka_cetak":
       return "Buka Cetak"
+
+    case "buka_ujian":
+      return "Persetujuan Ujian"
+
+    case "sesi_ujian_dibuat":
+      return "Sesi Ujian Dibuat"
+
+    case "status_sesi_ujian":
+      return "Status Sesi Ujian"
+
+    case "token_sesi_dirotasi":
+      return "Token QR Dirotasi"
+
+    case "akses_soal_qr":
+      return "Akses Soal QR"
+
+    case "akses_soal_qr_ditolak":
+      return "Akses QR Ditolak"
 
     case "revisi":
       return "Revisi"
@@ -1460,6 +1561,10 @@ interface ApiRekap {
   dosen?: string | null
   bank_soal_id?: number | null
   status: string
+
+  judul?: string | null
+
+  catatan_persetujuan?: string | null
   jenis?: string | null
   jadwal_ujian?: string | null
 }
@@ -1509,6 +1614,8 @@ export function toUiRekap(api: ApiRekap): RekapRow {
     dosen: api.dosen ?? null,
     bank_soal_id: api.bank_soal_id ?? null,
     status: api.status,
+    judul: api.judul ?? null,
+    catatan_persetujuan: api.catatan_persetujuan ?? null,
     jenis: api.jenis ?? null,
     jadwal_ujian: api.jadwal_ujian ? normalizeDateTime(api.jadwal_ujian) : null,
   }
@@ -1593,13 +1700,321 @@ export async function decideRevisi(
   return res.message
 }
 
-// Kaprodi membuka jendela cetak: terkunci -> siap_cetak.
-export async function bukaCetak(bankSoalId: number): Promise<string> {
+// Kaprodi membuka jendela ujian online: terkunci -> siap_ujian.
+// Hanya bisa jika jadwal_ujian sudah diisi (validasi sisi server).
+export async function bukaUjian(bankSoalId: number): Promise<string> {
   const res = await apiFetch<{ message: string }>(
     `/soal/${bankSoalId}/buka-cetak`,
     { method: "POST" },
   )
   return res.message
+}
+
+// Alias untuk kompatibilitas dengan impor di App.tsx
+export const bukaCetak = bukaUjian
+
+export async function putuskanPersetujuanSoal(
+  bankSoalId: number,
+  keputusan: "disetujui" | "ditolak",
+  catatan?: string,
+): Promise<string> {
+  const res = await apiFetch<{ message: string }>(`/soal/${bankSoalId}/persetujuan`, {
+    method: "PATCH",
+    body: JSON.stringify({ keputusan, catatan: catatan ?? null }),
+  })
+  return res.message
+}
+
+export async function previewSoalPersetujuan(bankSoalId: number): Promise<Blob> {
+  const response = await fetch(`${API_BASE}/soal/${bankSoalId}/preview-persetujuan`, {
+    headers: { Accept: "application/pdf", ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}) },
+  })
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}))
+    throw new ApiError(response.status, body.message ?? `Gagal membuka PDF (HTTP ${response.status}).`)
+  }
+  return response.blob()
+}
+
+// Daftar soal siap ujian online (untuk Kaprodi & Panitia).
+export interface UjianOnlineRow {
+  id: number
+  kode_mk: string
+  nama_mk: string
+  kelas: string
+  dosen: string | null
+  jenis: string
+  judul: string
+  jadwal_ujian: string
+  waktu_mulai_ujian: string
+  durasi_menit: number
+  jumlah_mahasiswa: number
+  qr_token: string | null
+  status_akses: "buka" | "belum_buka"
+  alasan: string | null
+}
+
+export interface SoalDisetujui {
+  id: number
+  mk_id: number
+  nama_mk: string
+  kode_mk: string
+  kelas: string
+  dosen: string | null
+  judul: string
+  jenis: string
+}
+
+export interface SesiUjian {
+  id: number
+  bank_soal_id: number
+  nama_mk: string
+  kode_mk: string
+  dosen: string | null
+  kelas: string
+  judul: string
+  nama_ujian: string
+  program_studi: string | null
+  keterangan: string | null
+  catatan_status: string | null
+  jenis: string
+  waktu_mulai: string
+  waktu_selesai: string
+  status: "draft" | "scheduled" | "active" | "completed" | "cancelled" | "suspended"
+  token: string | null
+  qr_url: string | null
+  jumlah_akses: number
+  jumlah_peserta: number
+}
+
+export interface LogAksesUjian {
+  id: number
+  nim: string
+  nama: string
+  mata_kuliah: string | null
+  sesi_ujian_id: number
+  akses_pertama_pada: string
+  akses_terakhir_pada: string
+  jumlah_akses: number
+  status_akses: "berhasil" | "ditolak"
+}
+
+export interface PesertaTerkunci {
+  id: number
+  nama: string
+  nim: string
+  nama_ujian: string | null
+  mata_kuliah: string | null
+  kelas: string | null
+  sesi_ujian_id: number
+  pelanggaran_count: number
+  access_locked_at: string | null
+  unlock_requested_at: string | null
+  unlock_request_note: string | null
+  peminta: string | null
+}
+
+export async function fetchPesertaTerkunci(): Promise<PesertaTerkunci[]> {
+  const res = await apiFetch<{ data: PesertaTerkunci[] }>("/pelanggaran-ujian")
+  return res.data ?? []
+}
+
+export async function mintaBukaAksesPeserta(id: number, catatan: string): Promise<void> {
+  await apiFetch(`/pelanggaran-ujian/${id}/minta-buka`, { method: "POST", body: JSON.stringify({ catatan }) })
+}
+
+export async function fetchPermintaanBukaAkses(): Promise<PesertaTerkunci[]> {
+  const res = await apiFetch<{ data: PesertaTerkunci[] }>("/permintaan-buka-akses")
+  return res.data ?? []
+}
+
+export async function bukaAksesPeserta(id: number, catatan: string): Promise<void> {
+  await apiFetch(`/permintaan-buka-akses/${id}/buka`, { method: "POST", body: JSON.stringify({ catatan }) })
+}
+
+export async function fetchSoalDisetujui(): Promise<SoalDisetujui[]> {
+  const res = await apiFetch<{ data: SoalDisetujui[] }>("/soal-disetujui")
+  return res.data ?? []
+}
+
+export async function fetchSesiUjian(): Promise<SesiUjian[]> {
+  const res = await apiFetch<{ data: SesiUjian[] }>("/sesi-ujian")
+  return res.data ?? []
+}
+
+export async function createSesiUjian(input: {
+  bank_soal_id: number
+  waktu_mulai: string
+  waktu_selesai: string
+  nama_ujian?: string
+  program_studi?: string
+  keterangan?: string
+  status?: "draft" | "scheduled"
+}): Promise<SesiUjian> {
+  const res = await apiFetch<{ data: SesiUjian }>("/sesi-ujian", {
+    method: "POST",
+    body: JSON.stringify(input),
+  })
+  return res.data
+}
+
+export async function updateSesiUjian(id: number, input: {
+  waktu_mulai: string
+  waktu_selesai: string
+  nama_ujian?: string
+  program_studi?: string
+  keterangan?: string
+}): Promise<void> {
+  await apiFetch(`/sesi-ujian/${id}`, { method: "PUT", body: JSON.stringify(input) })
+}
+
+export async function setStatusSesiUjian(id: number, status: SesiUjian["status"], catatan?: string): Promise<void> {
+  await apiFetch(`/sesi-ujian/${id}/status`, { method: "PATCH", body: JSON.stringify({ status, catatan }) })
+}
+
+export async function rotateSesiToken(id: number): Promise<SesiUjian> {
+  const res = await apiFetch<{ data: SesiUjian }>(`/sesi-ujian/${id}/rotasi-token`, { method: "POST" })
+  return res.data
+}
+
+export async function revokeSesiToken(id: number): Promise<void> {
+  await apiFetch(`/sesi-ujian/${id}/cabut-token`, { method: "POST" })
+}
+
+export async function extendSesiUjian(id: number, waktu_selesai: string, catatan: string): Promise<void> {
+  await apiFetch(`/sesi-ujian/${id}/perpanjang`, { method: "PATCH", body: JSON.stringify({ waktu_selesai, catatan }) })
+}
+
+export async function importPesertaSesi(id: number, file: File): Promise<number> {
+  const form = new FormData()
+  form.append("file", file)
+  const res = await apiFetch<{ message: string; jumlah_peserta: number }>(`/sesi-ujian/${id}/peserta`, { method: "POST", body: form })
+  return res.jumlah_peserta
+}
+
+export async function deletePesertaSesi(id: number): Promise<void> {
+  await apiFetch(`/sesi-ujian/${id}/peserta`, { method: "DELETE" })
+}
+
+export async function deleteSesiUjian(id: number): Promise<void> {
+  await apiFetch(`/sesi-ujian/${id}`, { method: "DELETE" })
+}
+
+export async function fetchLogAksesUjian(): Promise<LogAksesUjian[]> {
+  const res = await apiFetch<{ data: LogAksesUjian[] }>("/log-akses-ujian")
+  return res.data ?? []
+}
+
+export async function fetchUjianOnline(): Promise<UjianOnlineRow[]> {
+  const res = await apiFetch<{ data: UjianOnlineRow[] }>("/ujian-online")
+  return res.data ?? []
+}
+
+// Generate token QR code untuk ujian (Panitia / Kaprodi).
+export interface QrResult {
+  message: string
+  data: {
+    bank_soal_id: number
+    kode_mk: string
+    nama_mk: string
+    qr_token: string
+    qr_url: string
+    durasi_menit: number
+    waktu_mulai_ujian: string
+  }
+}
+
+export async function generateQr(
+  bankSoalId: number,
+): Promise<QrResult> {
+  const res = await apiFetch<QrResult>(`/ujian-online/${bankSoalId}/qr`, {
+    method: "POST",
+  })
+  return res
+}
+
+// Akses ujian via token QR (siswa, publik tanpa login).
+export interface QrAksesResult {
+  message: string
+  data: {
+    bank_soal_id: number
+    kode_mk: string
+    nama_mk: string
+    jenis: string
+    judul: string
+    durasi_menit: number
+    waktu_mulai_ujian: string
+    template_soal: string | null
+    file_path: string | null
+  }
+}
+
+export async function aksesUjianViaQr(
+  token: string,
+): Promise<QrAksesResult> {
+  const res = await apiFetch<QrAksesResult>(`/ujian-online/akses/${token}`, {
+    method: "GET",
+  })
+  return res
+}
+
+// Siswa mulai mengerjakan ujian.
+export interface MulaiUjianResult {
+  message: string
+  data: {
+    bank_soal_id: number
+    status: string
+    waktu_mulai: string
+  }
+}
+
+export async function mulaiUjian(
+  bankSoalId: number,
+): Promise<MulaiUjianResult> {
+  const res = await apiFetch<MulaiUjianResult>(`/ujian-online/${bankSoalId}/mulai`, {
+    method: "POST",
+  })
+  return res
+}
+
+// Siswa kumpulkan ujian.
+export interface KumpulkanUjianResult {
+  message: string
+  data: {
+    bank_soal_id: number
+    status: string
+    waktu_selesai: string
+  }
+}
+
+export async function kumpulkanUjian(
+  bankSoalId: number,
+): Promise<KumpulkanUjianResult> {
+  const res = await apiFetch<KumpulkanUjianResult>(`/ujian-online/${bankSoalId}/kumpulkan`, {
+    method: "POST",
+  })
+  return res
+}
+
+// Cek status ujian.
+export interface StatusUjianResult {
+  data: {
+    bank_soal_id: number
+    status: string
+    waktu_mulai_ujian: string
+    waktu_selesai_ujian: string | null
+    bisa_akses: boolean
+    sudah_selesai: boolean
+  }
+}
+
+export async function statusUjian(
+  bankSoalId: number,
+): Promise<StatusUjianResult> {
+  const res = await apiFetch<StatusUjianResult>(`/ujian-online/${bankSoalId}/status`, {
+    method: "GET",
+  })
+  return res
 }
 
 // Kaprodi/Admin menonaktifkan / mengaktifkan pengguna.

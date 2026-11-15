@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 class LaporanController extends Controller
 {
     /**
-     * Berita Acara Ujian (PDF): rekap pengumpulan soal + riwayat cetak.
+     * Berita Acara Ujian Online (PDF): rekap pengumpulan soal + riwayat ujian online.
      * Hanya untuk Kaprodi. Dikirim sebagai unduhan (bukan disimpan di klien).
      */
     public function beritaAcara(Request $request): Response
@@ -28,25 +28,30 @@ class LaporanController extends Controller
                 'users.nama as dosen',
                 'bank_soal.status',
                 'bank_soal.jenis',
+                'bank_soal.jadwal_ujian',
+                'bank_soal.durasi_menit',
             )
             ->orderBy('mata_kuliah.kode_mk')
             ->get();
 
-        $logCetak = LogCetak::with(['bankSoal.mataKuliah', 'petugas', 'printer'])
-            ->orderByDesc('waktu_cetak')
+        $logUjian = LogAktivitas::whereIn('aksi', ['akses_soal_qr', 'akses_soal_qr_ditolak', 'status_sesi_ujian', 'token_sesi_dirotasi'])
+            ->with(['bankSoal.mataKuliah', 'user'])
+            ->orderByDesc('waktu')
             ->limit(200)
             ->get();
 
         $totalMk = $rekap->count();
         $sudahUpload = $rekap->whereNotNull('status')->count();
         $belumUpload = $totalMk - $sudahUpload;
+        $sudahUjian = $rekap->whereIn('status', ['dibuka', 'selesai', 'arsip'])->count();
 
         $html = view('laporan.berita_acara', [
             'rekap' => $rekap,
-            'logCetak' => $logCetak,
+            'logUjian' => $logUjian,
             'totalMk' => $totalMk,
             'sudahUpload' => $sudahUpload,
             'belumUpload' => $belumUpload,
+            'sudahUjian' => $sudahUjian,
             'penanggungJawab' => $request->user(),
             'dibuatPada' => now(),
         ])->render();
@@ -56,7 +61,7 @@ class LaporanController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
 
-        $filename = 'berita-acara-ujian-'.now()->format('Ymd-His').'.pdf';
+        $filename = 'berita-acara-ujian-online-'.now()->format('Ymd-His').'.pdf';
 
         return response($dompdf->output(), 200, [
             'Content-Type' => 'application/pdf',

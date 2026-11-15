@@ -46,10 +46,10 @@
         <div class="box"><div class="num">{{ $totalMk }}</div><div class="lbl">Total Mata Kuliah</div></div>
         <div class="box"><div class="num" style="color:#065f46">{{ $sudahUpload }}</div><div class="lbl">Sudah Upload</div></div>
         <div class="box"><div class="num" style="color:#92400e">{{ $belumUpload }}</div><div class="lbl">Belum Upload</div></div>
-        <div class="box"><div class="num">{{ $logCetak->count() }}</div><div class="lbl">Riwayat Cetak</div></div>
+        <div class="box"><div class="num">{{ $logUjian->count() }}</div><div class="lbl">Riwayat Ujian Online</div></div>
     </div>
 
-    <h2>Rekap Pengumpulan Soal</h2>
+    <h2>Rekap Pengumpulan Soal Ujian Online</h2>
     <table>
         <thead>
             <tr>
@@ -58,6 +58,8 @@
                 <th style="width:10%">Kelas</th>
                 <th style="width:24%">Dosen</th>
                 <th style="width:16%">Status</th>
+                <th style="width:16%">Jadwal Ujian</th>
+                <th style="width:10%">Durasi</th>
             </tr>
         </thead>
         <tbody>
@@ -69,42 +71,44 @@
                     <td>{{ $row->dosen ?? '-' }}</td>
                     <td>
                         @if ($row->status)
-                            <span class="badge ok">{{ ucfirst($row->status) }}</span>
+                            <span class="badge {{ $row->status === 'selesai' ? 'ok' : 'no' }}">{{ ucfirst($row->status) }}</span>
                         @else
                             <span class="badge no">Belum Upload</span>
                         @endif
                     </td>
+                    <td>{{ optional($row->jadwal_ujian)->format('d M Y H:i') ?? '-' }}</td>
+                    <td>{{ $row->durasi_menit ?? '-' }} menit</td>
                 </tr>
             @empty
-                <tr><td colspan="5" style="text-align:center; color:#9ca3af;">Belum ada data mata kuliah.</td></tr>
+                <tr><td colspan="7" style="text-align:center; color:#9ca3af;">Belum ada data mata kuliah.</td></tr>
             @endforelse
         </tbody>
     </table>
 
-    <h2>Riwayat Percetakan</h2>
+    <h2>Riwayat Ujian Online</h2>
     <table>
         <thead>
             <tr>
                 <th style="width:18%">Waktu</th>
                 <th>Mata Kuliah</th>
-                <th style="width:18%">Dicetak Oleh</th>
-                <th style="width:8%">Eks</th>
-                <th style="width:14%">Printer</th>
+                <th style="width:18%">Oleh</th>
+                <th style="width:20%">Aksi</th>
+                <th style="width:14%">Catatan</th>
                 <th style="width:10%">Status</th>
             </tr>
         </thead>
         <tbody>
-            @forelse ($logCetak as $log)
+            @forelse ($logUjian as $log)
                 <tr>
-                    <td>{{ optional($log->waktu_cetak)->format('d M Y H:i') }}</td>
+                    <td>{{ optional($log->waktu)->format('d M Y H:i') }}</td>
                     <td>{{ $log->bankSoal?->mataKuliah?->nama_mk ?? '-' }}</td>
-                    <td>{{ $log->petugas?->nama ?? '-' }}</td>
-                    <td>{{ $log->jumlah_cetak }}</td>
-                    <td>{{ $log->printer?->nama_printer ?? '-' }}</td>
-                    <td>{{ ucfirst($log->status) }}</td>
+                    <td>{{ $log->user?->nama ?? 'Sistem' }}</td>
+                    <td>{{ ucfirst(str_replace('_', ' ', $log->aksi)) }}</td>
+                    <td>{{ $log->detail['status'] ?? '-' }}</td>
+                    <td>{{ ucfirst($log->detail['status'] ?? '-') }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6" style="text-align:center; color:#9ca3af;">Belum ada percetakan.</td></tr>
+                <tr><td colspan="6" style="text-align:center; color:#9ca3af;">Belum ada riwayat ujian online.</td></tr>
             @endforelse
         </tbody>
     </table>
