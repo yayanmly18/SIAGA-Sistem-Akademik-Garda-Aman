@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useId,
   lazy,
   Suspense,
   type ReactNode,
@@ -545,12 +546,12 @@ function Sidebar({
         />
       )}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-black/5 bg-[#f4f1ea] text-slate-800 transition-transform duration-300 lg:w-24 lg:translate-x-0 ${
+        className={`sikasa-sidebar fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-black/5 bg-[#f4f1ea] text-slate-800 transition-transform duration-300 lg:w-72 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex h-24 items-center gap-3 border-b border-black/5 px-6 lg:justify-center lg:px-0">
-          <div className="grid size-11 place-items-center rounded-2xl bg-[#202126] text-[#f5cf25] shadow-lg shadow-black/10">
+        <div className="sikasa-sidebar-brand flex min-h-20 items-center gap-2.5 border-b border-black/5 px-5">
+          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#202126] text-[#f5cf25] shadow-lg shadow-black/10">
             <span
               className="font-display text-[11px] font-extrabold tracking-tight lg:hidden"
               aria-hidden="true"
@@ -558,18 +559,18 @@ function Sidebar({
               <Icon name="lock" size={23} />
             </span>
             <span
-              className="font-display hidden text-[13px] font-extrabold tracking-tight lg:block"
+              className="font-display hidden text-[11px] font-extrabold tracking-tight lg:block"
               title={APP_TAGLINE}
             >
               {APP_SINGKATAN.slice(0, 3)}
             </span>
           </div>
-          <div className="lg:hidden">
-            <div className="font-display text-[17px] font-bold tracking-wide">
+          <div className="sikasa-brand-copy min-w-0 flex-1">
+            <div className="font-display text-[14px] font-bold leading-tight tracking-normal">
               {APP_NAMA}
             </div>
             <div
-              className="mt-0.5 text-[11px] font-semibold tracking-[0.2em] text-slate-400"
+              className="sikasa-institution mt-1 text-[8px] font-semibold leading-[1.35] tracking-[0.08em] text-slate-400"
               title={APP_TAGLINE}
             >
               {INSTANSI_KOP}
@@ -583,7 +584,7 @@ function Sidebar({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-7 lg:px-3">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pt-7 lg:px-4">
           <div className="mb-3 px-3 text-[10px] font-bold tracking-[0.2em] text-slate-400 lg:hidden">
             MENU UTAMA
           </div>
@@ -593,9 +594,9 @@ function Sidebar({
                 aria-label={item.label}
                 title={item.label}
                 key={item.label}
-                className={`group relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition lg:aspect-square lg:justify-center lg:p-0 ${
+                className={`sikasa-nav-item group relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition ${
                   active === item.label
-                    ? "bg-[#202126] text-white shadow-sm"
+                    ? "is-active bg-[#202126] text-white shadow-sm"
                     : "text-slate-500 hover:bg-white hover:text-slate-900"
                 }`}
                 onClick={() => {
@@ -610,17 +611,14 @@ function Sidebar({
                 >
                   <Icon name={item.icon} size={19} />
                 </span>
-                <span className="lg:hidden">{item.label}</span>
-                <span className="pointer-events-none absolute left-[calc(100%+0.75rem)] z-50 hidden whitespace-nowrap rounded-lg bg-[#202126] px-3 py-2 text-[11px] font-semibold text-white opacity-0 shadow-xl transition group-hover:opacity-100 lg:block">
-                  {item.label}
-                </span>
+                <span>{item.label}</span>
               </button>
             ))}
           </nav>
         </div>
 
         <div className="mt-auto shrink-0 p-4 lg:px-3">
-          <div className="rounded-2xl border border-black/5 bg-white p-4 lg:hidden">
+          <div className="rounded-2xl border border-black/5 bg-white p-4">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-700">
               <span className="relative flex size-2">
                 <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-300 opacity-70" />
@@ -629,35 +627,32 @@ function Sidebar({
               Server Aman & Aktif
             </div>
             <p className="text-[11px] leading-relaxed text-slate-400">
-              Enkripsi aktif · Printer Kaprodi terhubung
+              Enkripsi aktif · Distribusi soal terlindungi
             </p>
           </div>
           <button
-            className="mt-5 flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-white lg:justify-center lg:p-2"
+            className="mt-5 flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left hover:bg-white"
             onClick={onLogout}
           >
             <div className="grid size-10 place-items-center rounded-full bg-[#202126] text-sm font-bold text-[#f5cf25]">
               {initials(userName)}
             </div>
-            <div className="min-w-0 lg:hidden">
+            <div className="min-w-0">
               <div className="truncate text-sm font-semibold">{userName}</div>
               <div className="text-[11px] text-slate-400">{profile.label}</div>
             </div>
-            <span className="lg:hidden">
+            <span className="ml-auto">
               <Icon name="chevron" size={16} />
             </span>
           </button>
           <button
             aria-label="Keluar"
             title="Keluar"
-            className="group relative mt-2 flex w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-50 lg:justify-center lg:px-0 lg:py-2.5"
+            className="group relative mt-2 flex min-h-11 w-full items-center gap-3 rounded-2xl px-3.5 py-2.5 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-50"
             onClick={onLogout}
           >
             <Icon name="logout" size={19} />
-            <span className="lg:hidden">Keluar</span>
-            <span className="pointer-events-none absolute left-[calc(100%+0.75rem)] top-1/2 z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#202126] px-3 py-2 text-[11px] font-semibold text-white opacity-0 shadow-xl transition group-hover:opacity-100 lg:block">
-              Keluar
-            </span>
+            <span>Keluar</span>
           </button>
         </div>
       </aside>
@@ -704,6 +699,230 @@ function StatCard({
         <span className="size-1.5 rounded-full bg-emerald-500" />
         {detail}
       </p>
+    </div>
+  )
+}
+
+type ConfirmOptions = {
+  title: string
+  description: string
+  confirmLabel?: string
+  tone?: "danger" | "warning"
+}
+
+function useConfirmCard() {
+  const [options, setOptions] = useState<ConfirmOptions | null>(null)
+  const resolveRef = useRef<((confirmed: boolean) => void) | null>(null)
+
+  const ask = (nextOptions: ConfirmOptions) =>
+    new Promise<boolean>((resolve) => {
+      resolveRef.current = resolve
+      setOptions(nextOptions)
+    })
+
+  const close = (confirmed: boolean) => {
+    const resolve = resolveRef.current
+    resolveRef.current = null
+    setOptions(null)
+    resolve?.(confirmed)
+  }
+
+  const dialog = options ? (
+    <ConfirmCard
+      {...options}
+      onCancel={() => close(false)}
+      onConfirm={() => close(true)}
+    />
+  ) : null
+
+  return { ask, dialog }
+}
+
+function ConfirmCard({
+  title,
+  description,
+  confirmLabel = "Ya, lanjutkan",
+  tone = "danger",
+  onCancel,
+  onConfirm,
+}: ConfirmOptions & { onCancel: () => void; onConfirm: () => void }) {
+  const cancelRef = useRef<HTMLButtonElement>(null)
+  const titleId = useId()
+  const descriptionId = useId()
+
+  useEffect(() => {
+    cancelRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onCancel])
+
+  const danger = tone === "danger"
+  return (
+    <div
+      className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel()
+      }}
+    >
+      <section
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        aria-modal="true"
+        className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_28px_90px_rgba(15,35,30,0.28)] sm:p-7"
+        role="alertdialog"
+      >
+        <div className="flex items-start gap-4">
+          <div
+            className={`grid size-12 shrink-0 place-items-center rounded-2xl ${danger ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}
+          >
+            <Icon name={danger ? "x" : "shield"} size={21} />
+          </div>
+          <div className="min-w-0 pt-0.5">
+            <h2 className="font-display text-lg font-bold tracking-tight text-slate-900" id={titleId}>
+              {title}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600" id={descriptionId}>
+              {description}
+            </p>
+          </div>
+        </div>
+        <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="min-h-11 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            onClick={onCancel}
+            ref={cancelRef}
+            type="button"
+          >
+            Batal
+          </button>
+          <button
+            className={`min-h-11 rounded-xl px-4 py-2.5 text-sm font-bold text-white ${danger ? "bg-rose-700 hover:bg-rose-800" : "bg-amber-700 hover:bg-amber-800"}`}
+            onClick={onConfirm}
+            type="button"
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+type PromptOptions = {
+  title: string
+  description: string
+  label: string
+  initialValue?: string
+  type?: "text" | "datetime-local"
+  placeholder?: string
+}
+
+function usePromptCard() {
+  const [options, setOptions] = useState<PromptOptions | null>(null)
+  const resolveRef = useRef<((value: string | null) => void) | null>(null)
+
+  const ask = (nextOptions: PromptOptions) =>
+    new Promise<string | null>((resolve) => {
+      resolveRef.current = resolve
+      setOptions(nextOptions)
+    })
+
+  const close = (value: string | null) => {
+    const resolve = resolveRef.current
+    resolveRef.current = null
+    setOptions(null)
+    resolve?.(value)
+  }
+
+  const dialog = options ? (
+    <PromptCard
+      {...options}
+      onCancel={() => close(null)}
+      onSubmit={(value) => close(value)}
+    />
+  ) : null
+
+  return { ask, dialog }
+}
+
+function PromptCard({
+  title,
+  description,
+  label,
+  initialValue = "",
+  type = "text",
+  placeholder,
+  onCancel,
+  onSubmit,
+}: PromptOptions & {
+  onCancel: () => void
+  onSubmit: (value: string) => void
+}) {
+  const [value, setValue] = useState(initialValue)
+  const fieldRef = useRef<HTMLInputElement>(null)
+  const titleId = useId()
+  const descriptionId = useId()
+
+  useEffect(() => {
+    fieldRef.current?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel()
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [onCancel])
+
+  return (
+    <div
+      className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-950/45 p-4 backdrop-blur-sm"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel()
+      }}
+    >
+      <section
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        aria-modal="true"
+        className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_28px_90px_rgba(15,35,30,0.28)] sm:p-7"
+        role="dialog"
+      >
+        <h2 className="font-display text-lg font-bold tracking-tight text-slate-900" id={titleId}>
+          {title}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600" id={descriptionId}>
+          {description}
+        </p>
+        <label className="mt-5 block text-xs font-bold text-slate-700">
+          {label}
+          <input
+            className="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal text-slate-800 outline-none focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10"
+            onChange={(event) => setValue(event.target.value)}
+            placeholder={placeholder}
+            ref={fieldRef}
+            type={type}
+            value={value}
+          />
+        </label>
+        <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            className="min-h-11 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            onClick={onCancel}
+            type="button"
+          >
+            Batal
+          </button>
+          <button
+            className="min-h-11 rounded-xl bg-[#173a35] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#244b45]"
+            onClick={() => onSubmit(value)}
+            type="button"
+          >
+            Simpan
+          </button>
+        </div>
+      </section>
     </div>
   )
 }
@@ -1320,12 +1539,18 @@ function DashboardPage({
   const todayLabel = `${HARI[today.getDay()]}, ${today.getDate()} ${BULAN_SINGKAT[today.getMonth()]} ${today.getFullYear()}`
 
   // Kartu statistik diambil langsung dari endpoint /dashboard (per peran).
-  const statStyles = [
-    { icon: "book", tone: "blue", detail: "Ringkasan sistem" },
-    { icon: "check", tone: "green", detail: "Status terkini" },
-    { icon: "clock", tone: "gold", detail: "Perlu tindakan" },
-    { icon: "qrcode", tone: "blue", detail: "Akses tercatat" },
-  ] as const
+  const statStyles = role === "panitia"
+    ? ([
+        { icon: "file", tone: "blue", detail: "Naskah disetujui" },
+        { icon: "calendar", tone: "gold", detail: "Sesi terjadwal" },
+        { icon: "check", tone: "green", detail: "Sedang berlangsung" },
+      ] as const)
+    : ([
+        { icon: "book", tone: "blue", detail: "Ringkasan sistem" },
+        { icon: "check", tone: "green", detail: "Status terkini" },
+        { icon: "clock", tone: "gold", detail: "Perlu tindakan" },
+        { icon: "qrcode", tone: "blue", detail: "Akses tercatat" },
+      ] as const)
   const stats = (db.dashboard?.cards ?? []).map((card, index) => {
     const style = statStyles[index % statStyles.length]
     return {
@@ -1498,12 +1723,48 @@ function DashboardPage({
           </button>
         </div>
       </section>
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section className={`mt-6 grid gap-4 sm:grid-cols-2 ${role === "panitia" ? "md:grid-cols-3" : "xl:grid-cols-4"}`}>
         {dashboard.stats.map((stat) => (
           <StatCard key={stat.label} {...stat} />
         ))}
       </section>
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
+        {role === "panitia" ? (
+          <div className="panitia-prep-card rounded-2xl border border-slate-200/80 bg-white p-6">
+            <div className="flex items-start gap-4">
+              <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-[#f5cf25] text-[#202126]">
+                <Icon name="qrcode" size={21} />
+              </div>
+              <div className="min-w-0">
+                <div className="font-display text-lg font-bold text-slate-900">
+                  Persiapan Distribusi Soal
+                </div>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                  Alur singkat sebelum QR Code ditampilkan di ruang ujian.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 grid gap-3 sm:grid-cols-3 xl:grid-cols-1 2xl:grid-cols-3">
+              {[
+                ["01", "Pilih naskah", "Gunakan soal yang sudah disetujui Kaprodi."],
+                ["02", "Atur sesi", "Isi jadwal ujian dan data peserta."],
+                ["03", "Tampilkan QR", "Mahasiswa membaca soal, jawaban tetap di kertas."],
+              ].map(([number, title, detail]) => (
+                <div className="panitia-prep-step rounded-xl border border-slate-200 bg-slate-50 p-3.5" key={number}>
+                  <div className="flex items-center gap-2">
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#173a35] text-[10px] font-extrabold text-[#d9ef83]">
+                      {number}
+                    </span>
+                    <span className="text-xs font-bold text-slate-800">{title}</span>
+                  </div>
+                  <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+                    {detail}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -1542,6 +1803,7 @@ function DashboardPage({
             ))}
           </div>
         </div>
+        )}
         <div className="rounded-2xl border border-slate-200/80 bg-white p-6">
           <div className="font-display text-lg font-bold text-slate-900">
             Aktivitas Terbaru
@@ -1582,6 +1844,7 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
   const [file, setFile] = useState<File | null>(null)
   const [judul, setJudul] = useState("")
   const [busy, setBusy] = useState(false)
+  const [konfirmasiFinal, setKonfirmasiFinal] = useState(false)
   const [mkId, setMkId] = useState<number | null>(null)
   const [jenis, setJenis] = useState<"UTS" | "UAS">("UTS")
   const [jadwal, setJadwal] = useState(() => defaultExamTimes().mulai)
@@ -1706,7 +1969,10 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
           <input
             accept=".pdf"
             className="hidden"
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            onChange={(event) => {
+              setFile(event.target.files?.[0] ?? null)
+              setKonfirmasiFinal(false)
+            }}
             type="file"
           />
           <div className="grid size-12 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">
@@ -1720,13 +1986,24 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
           </div>
         </label>
         <label className="mt-5 flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
-          <input className="mt-0.5" type="checkbox" />
+          <input
+            className="mt-0.5"
+            checked={konfirmasiFinal}
+            onChange={(event) => setKonfirmasiFinal(event.target.checked)}
+            required
+            type="checkbox"
+          />
           Saya memastikan soal sudah final dan memahami bahwa revisi setelah
           dikunci memerlukan persetujuan Kaprodi.
         </label>
+        {!konfirmasiFinal && (
+          <p className="-mt-3 px-1 text-xs font-medium text-amber-800">
+            Centang konfirmasi ini sebelum mengajukan soal.
+          </p>
+        )}
         <button
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#202126] py-3.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={busy}
+          disabled={busy || !konfirmasiFinal}
           onClick={async () => {
             if (!file) return showToast("Pilih berkas PDF terlebih dahulu.")
             if (!judul.trim()) return showToast("Judul soal wajib diisi.")
@@ -1743,6 +2020,7 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
               })
               setFile(null)
               setJudul("")
+              setKonfirmasiFinal(false)
               showToast("Soal terenkripsi dan menunggu persetujuan Kaprodi.")
             } catch (error) {
               showToast(
@@ -1915,6 +2193,7 @@ function TemplatePage({ showToast }: { showToast: (message: string) => void }) {
   const [file, setFile] = useState<File | null>(null)
   const [busy, setBusy] = useState(false)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const { ask, dialog } = useConfirmCard()
 
   const isAdmin = currentUser?.role === "admin"
 
@@ -1948,7 +2227,14 @@ function TemplatePage({ showToast }: { showToast: (message: string) => void }) {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Hapus template ini?")) return
+    const template = db.template_soal.find((item) => item.id === id)
+    if (!template) return
+    const confirmed = await ask({
+      title: "Hapus template soal?",
+      description: `Template “${template.nama_template}” akan dihapus dan tidak lagi tersedia sebagai acuan dosen. Aksi ini tidak dapat dibatalkan.`,
+      confirmLabel: "Hapus template",
+    })
+    if (!confirmed) return
     setDeleting(id)
     try {
       await deleteTemplate(id)
@@ -1980,128 +2266,173 @@ function TemplatePage({ showToast }: { showToast: (message: string) => void }) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_0.65fr]">
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-6 sm:p-8">
-        <div className="font-display text-xl font-bold text-slate-900">
-          Manajemen Template Soal
+    <>
+    <div className="template-page grid items-start gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-7">
+        <div className="flex items-start gap-3 border-b border-slate-100 pb-5">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-800">
+            <Icon name="document" size={21} />
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-bold text-slate-900">
+              Tambah Template
+            </h2>
+            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+              Siapkan berkas acuan yang bisa dipilih dosen saat mengunggah soal.
+            </p>
+          </div>
+          <span className="ml-auto hidden shrink-0 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-800 sm:inline-flex">
+            PDF · DOC · DOCX
+          </span>
         </div>
-        <p className="mt-1 text-sm text-slate-400">
-          Unggah berkas referensi format soal yang akan digunakan dosen sebagai
-          acuan saat mengunggah soal.
-        </p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label className="text-xs font-bold text-slate-600">
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="text-xs font-bold text-slate-700">
             Nama template
             <input
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
               onChange={(event) => setNamaTemplate(event.target.value)}
-              placeholder="cth: Format Soal UTS Matakuliah X"
+              placeholder="Contoh: Format Soal UTS"
               value={namaTemplate}
             />
           </label>
-          <label className="text-xs font-bold text-slate-600">
-            Deskripsi
-            <textarea
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
+          <label className="text-xs font-bold text-slate-700">
+            Deskripsi <span className="font-normal text-slate-400">(opsional)</span>
+            <input
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-normal outline-none focus:border-slate-900"
               onChange={(event) => setDeskripsi(event.target.value)}
-              placeholder="Keterangan singkat tentang format template ini"
+              placeholder="Jelaskan kegunaan atau format template"
+              type="text"
               value={deskripsi}
             />
           </label>
-          <label className="text-xs font-bold text-slate-600 col-span-2">
-            Berkas template
-            <label className="mt-2 flex min-h-48 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-6 text-center transition hover:border-emerald-400">
+          <div className="sm:col-span-2">
+            <label className="text-xs font-bold text-slate-700" htmlFor="template-file">
+              Berkas template
+            </label>
+            <label
+              className="mt-2 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/40 p-5 text-center transition hover:border-emerald-400 hover:bg-emerald-50/70"
+              htmlFor="template-file"
+            >
               <input
                 accept=".pdf,.doc,.docx"
-                className="hidden"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                className="sr-only"
+                id="template-file"
+                onChange={(event) => {
+                  setFile(event.target.files?.[0] ?? null)
+                  event.currentTarget.value = ""
+                }}
                 type="file"
               />
-              <div className="grid size-12 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm">
-                <Icon name={file ? "check" : "upload"} size={23} />
+              <div className="grid size-11 place-items-center rounded-xl bg-white text-emerald-800 shadow-sm">
+                <Icon name={file ? "check" : "upload"} size={21} />
               </div>
-              <div className="mt-4 text-sm font-bold text-slate-700">
-                {file?.name || "Klik untuk pilih berkas template"}
+              <div className="mt-3 max-w-full break-all text-sm font-bold text-slate-700">
+                {file?.name || "Pilih berkas template"}
               </div>
-              <div className="mt-1 text-xs text-slate-400">
-                PDF / DOC / DOCX · Maksimal 10 MB
+              <div className="mt-1 text-xs text-slate-500">
+                PDF, DOC, atau DOCX · Maksimal 10 MB
               </div>
             </label>
-          </label>
+          </div>
         </div>
+
         <button
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#202126] py-3.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#202126] px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
           disabled={busy || !namaTemplate.trim() || !file}
           onClick={handleUpload}
         >
-          <Icon name="upload" size={18} />{" "}
-          {busy ? "Mengunggah..." : "Simpan Template"}
+          <Icon name="upload" size={18} />
+          {busy ? "Mengunggah template..." : "Simpan Template"}
         </button>
       </section>
 
-      <section className="space-y-6">
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-6">
-          <div className="font-display text-lg font-bold text-slate-900">
-            Daftar Template
-          </div>
-          {db.template_soal.length === 0 ? (
-            <p className="mt-4 text-xs text-slate-400 text-center">
-              Belum ada template. Silakan unggah template pertama.
+      <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h2 className="font-display text-lg font-bold text-slate-900">
+              Template Tersimpan
+            </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Berkas acuan yang tersedia untuk dosen.
             </p>
-          ) : (
-            <div className="mt-4 space-y-3">
-              {db.template_soal.map((tpl) => (
-                <div
-                  key={tpl.id}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3.5"
-                >
-                  <div className="grid size-9 place-items-center rounded-lg bg-[#f4f1ea] text-slate-600">
-                    <Icon name="document" size={15} />
+          </div>
+          <span className="grid min-h-8 min-w-8 place-items-center rounded-full bg-slate-100 px-2 text-xs font-bold text-slate-700">
+            {db.template_soal.length}
+          </span>
+        </div>
+        {db.template_soal.length === 0 ? (
+          <div className="flex min-h-48 flex-col items-center justify-center px-4 text-center">
+            <div className="grid size-12 place-items-center rounded-2xl bg-slate-50 text-slate-500">
+              <Icon name="document" size={21} />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-slate-700">
+              Belum ada template
+            </p>
+            <p className="mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
+              Template yang berhasil diunggah akan tampil di daftar ini.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {db.template_soal.map((tpl) => (
+              <div
+                key={tpl.id}
+                className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3.5"
+              >
+                <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#f2f6f3] text-emerald-800">
+                  <Icon name="document" size={17} />
+                </div>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <div className="break-words text-sm font-bold text-slate-800">
+                    {tpl.nama_template}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-bold text-slate-700 truncate">
-                      {tpl.nama_template}
+                  {tpl.deskripsi && (
+                    <div className="mt-1 break-words text-xs leading-relaxed text-slate-500">
+                      {tpl.deskripsi}
                     </div>
-                    {tpl.deskripsi && (
-                      <div className="mt-0.5 text-[10px] text-slate-400 truncate">
-                        {tpl.deskripsi}
-                      </div>
-                    )}
-                    <div className="mt-1 text-[10px] text-slate-400">
-                      Oleh {tpl.pembuat_nama ?? "-"} ·
-                      {tpl.created_at ?? "-"}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => handleDownload(tpl)}
-                      className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 text-[11px] font-bold transition"
-                      title="Unduh"
-                    >
-                      <Icon name="download" size={13} />
-                    </button>
-                    {isAdmin && (
-                      <button
-                        onClick={() => handleDelete(tpl.id)}
-                        disabled={deleting === tpl.id}
-                        className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 text-[11px] font-bold transition"
-                        title="Hapus"
-                      >
-                        <Icon name="x" size={13} />
-                      </button>
-                    )}
+                  )}
+                  <div className="mt-2 text-[10px] leading-relaxed text-slate-400">
+                    Oleh {tpl.pembuat_nama ?? "-"} · {tpl.created_at ?? "-"}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    aria-label={`Unduh ${tpl.nama_template}`}
+                    onClick={() => handleDownload(tpl)}
+                    className="flex size-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800"
+                    title="Unduh template"
+                    type="button"
+                  >
+                    <Icon name="download" size={15} />
+                  </button>
+                  {isAdmin && (
+                    <button
+                      aria-label={`Hapus ${tpl.nama_template}`}
+                      onClick={() => handleDelete(tpl.id)}
+                      disabled={deleting === tpl.id}
+                      className="flex size-9 items-center justify-center rounded-lg border border-rose-100 bg-rose-50 text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                      title="Hapus template"
+                      type="button"
+                    >
+                      <Icon name="x" size={15} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
+    {dialog}
+    </>
   )
 }
 
 function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) {
+  const { ask: askConfirm, dialog: confirmDialog } = useConfirmCard()
+  const { ask: askPrompt, dialog: promptDialog } = usePromptCard()
   const [soal, setSoal] = useState<SoalDisetujui[]>([])
   const [sesi, setSesi] = useState<SesiUjian[]>([])
   const [loading, setLoading] = useState(true)
@@ -2164,20 +2495,64 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
     finally { setBusyId(null) }
   }
 
-  const changeSessionStatus = (item: SesiUjian, status: SesiUjian["status"]) => {
-    const catatan = status === "cancelled" || status === "suspended"
-      ? window.prompt(status === "cancelled" ? "Alasan pembatalan sesi:" : "Alasan penangguhan sesi:")
+  const changeSessionStatus = async (item: SesiUjian, status: SesiUjian["status"]) => {
+    const needsReason = status === "cancelled" || status === "suspended"
+    const catatan = needsReason
+      ? await askPrompt({
+          title: status === "cancelled" ? "Batalkan sesi ujian?" : "Tangguhkan sesi ujian?",
+          description: `Tindakan ini mengubah akses peserta. Tuliskan alasan agar tercatat untuk sesi ${item.nama_ujian}.`,
+          label: "Alasan",
+          placeholder: "Contoh: perubahan jadwal dari fakultas",
+        })
       : undefined
     if ((status === "cancelled" || status === "suspended") && !catatan?.trim()) return
     void mutate(item.id, () => setStatusSesiUjian(item.id, status, catatan ?? undefined), `Status sesi menjadi ${status}.`)
   }
 
-  const extendSession = (item: SesiUjian) => {
-    const waktuBaru = window.prompt("Waktu selesai baru (YYYY-MM-DDTHH:mm):", item.waktu_selesai.replace(" ", "T"))
+  const extendSession = async (item: SesiUjian) => {
+    const waktuBaru = await askPrompt({
+      title: "Perpanjang waktu sesi",
+      description: `Atur waktu selesai baru untuk sesi ${item.nama_ujian}.`,
+      label: "Waktu selesai",
+      initialValue: item.waktu_selesai.replace(" ", "T"),
+      type: "datetime-local",
+    })
     if (!waktuBaru) return
-    const catatan = window.prompt("Alasan perpanjangan waktu:")
+    const catatan = await askPrompt({
+      title: "Alasan perpanjangan",
+      description: "Alasan ini akan disimpan bersama perubahan sesi.",
+      label: "Alasan",
+      placeholder: "Contoh: ujian tertunda karena kendala teknis",
+    })
     if (!catatan?.trim()) return
     void mutate(item.id, () => extendSesiUjian(item.id, waktuBaru.replace("T", " "), catatan.trim()), "Waktu sesi diperpanjang.")
+  }
+
+  const removeRoster = async (item: SesiUjian) => {
+    if (!await askConfirm({
+      title: "Hapus daftar peserta?",
+      description: `Seluruh roster untuk sesi ${item.nama_ujian} akan dihapus. Mahasiswa tidak dapat diverifikasi sampai roster diimpor kembali.`,
+      confirmLabel: "Hapus roster",
+    })) return
+    void mutate(item.id, () => deletePesertaSesi(item.id), "Roster peserta dihapus.")
+  }
+
+  const revokeToken = async (item: SesiUjian) => {
+    if (!await askConfirm({
+      title: "Cabut QR Code sesi?",
+      description: "QR yang sudah dibagikan langsung tidak berlaku. Buat token baru untuk membagikan akses kembali.",
+      confirmLabel: "Cabut QR",
+    })) return
+    void mutate(item.id, () => revokeSesiToken(item.id), "Token QR dicabut.")
+  }
+
+  const removeSession = async (item: SesiUjian) => {
+    if (!await askConfirm({
+      title: "Hapus sesi ujian?",
+      description: `Sesi ${item.nama_ujian} akan dihapus permanen dari daftar sesi.`,
+      confirmLabel: "Hapus sesi",
+    })) return
+    void mutate(item.id, () => deleteSesiUjian(item.id), "Sesi dihapus.")
   }
 
   const uploadRoster = (item: SesiUjian, file: File) => {
@@ -2228,6 +2603,7 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
 
   const idleSoal = soal.filter((item) => !sesi.some((s) => s.bank_soal_id === item.id))
   return (
+    <>
     <div className="space-y-5">
       <section className="rounded-2xl border border-slate-200/80 bg-white p-5 sm:p-6">
         <h2 className="font-display text-lg font-bold text-slate-900">{editingId ? "Ubah Jadwal Sesi" : "Buat Sesi Ujian"}</h2>
@@ -2258,7 +2634,7 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
               <div className="mt-1 text-xs text-slate-500">{item.program_studi ? `${item.program_studi} · ` : ""}{item.waktu_mulai} — {item.waktu_selesai} · Status: <b>{item.status}</b> · {item.jumlah_peserta} peserta · {item.jumlah_akses} akses tercatat</div>
               {item.keterangan && <p className="mt-1 text-xs text-slate-500">{item.keterangan}</p>}
               {item.catatan_status && <p className="mt-1 text-xs text-amber-700">Catatan status: {item.catatan_status}</p>}
-              {(["draft", "scheduled"].includes(item.status)) && <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs font-bold text-slate-700">Daftar peserta untuk verifikasi OTP</div><p className="mt-1 text-[11px] leading-relaxed text-slate-500">Impor daftar mahasiswa yang boleh membuka soal sesi ini. Isi satu baris untuk setiap mahasiswa dengan NIM, nama, dan email kampus aktif. Kode OTP akan dikirim ke email tersebut. Maksimal 5.000 peserta.</p><div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] text-slate-600"><div>nim,nama,email</div><div>230001,Andi Saputra,andi@kampus.ac.id</div></div><div className="mt-2 flex flex-wrap items-center gap-3"><button type="button" className="text-xs font-semibold text-emerald-700 underline" onClick={downloadRosterTemplate}>Unduh template CSV</button><input aria-label="Impor roster peserta CSV" type="file" accept=".csv,text/csv" className="max-w-full text-xs" disabled={busyId === item.id} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadRoster(item, file); event.currentTarget.value = "" }} />{item.jumlah_peserta > 0 && <button className="text-xs font-semibold text-rose-600 underline" disabled={busyId === item.id} onClick={() => window.confirm("Hapus semua roster sesi ini?") && void mutate(item.id, () => deletePesertaSesi(item.id), "Roster peserta dihapus.")}>Hapus roster</button>}</div><p className="mt-2 text-[10px] text-slate-400">Peserta terdaftar saat ini: {item.jumlah_peserta}. Roster harus dimasukkan sebelum sesi diaktifkan.</p></div>}
+              {(["draft", "scheduled"].includes(item.status)) && <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3"><div className="text-xs font-bold text-slate-700">Daftar peserta untuk verifikasi OTP</div><p className="mt-1 text-[11px] leading-relaxed text-slate-500">Impor daftar mahasiswa yang boleh membuka soal sesi ini. Isi satu baris untuk setiap mahasiswa dengan NIM, nama, dan email kampus aktif. Kode OTP akan dikirim ke email tersebut. Maksimal 5.000 peserta.</p><div className="mt-2 rounded-lg border border-slate-200 bg-white px-3 py-2 font-mono text-[11px] text-slate-600"><div>nim,nama,email</div><div>230001,Andi Saputra,andi@kampus.ac.id</div></div><div className="mt-2 flex flex-wrap items-center gap-3"><button type="button" className="text-xs font-semibold text-emerald-700 underline" onClick={downloadRosterTemplate}>Unduh template CSV</button><input aria-label="Impor roster peserta CSV" type="file" accept=".csv,text/csv" className="max-w-full text-xs" disabled={busyId === item.id} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadRoster(item, file); event.currentTarget.value = "" }} />{item.jumlah_peserta > 0 && <button className="text-xs font-semibold text-rose-600 underline" disabled={busyId === item.id} onClick={() => void removeRoster(item)}>Hapus roster</button>}</div><p className="mt-2 text-[10px] text-slate-400">Peserta terdaftar saat ini: {item.jumlah_peserta}. Roster harus dimasukkan sebelum sesi diaktifkan.</p></div>}
               {item.token && <div className="mt-3 flex flex-wrap items-center gap-4">
                 <button className="rounded-lg border border-slate-200 p-1" title="Perbesar QR" onClick={() => setQrBesar(item.id)}><img className="size-32" src={qrImages[item.id]} alt={`QR ${item.nama_mk}`} /></button>
                 <div className="flex flex-col gap-2 text-xs">
@@ -2279,19 +2655,23 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
               {(["active", "suspended"].includes(item.status)) && <button className="rounded-lg border border-amber-200 px-3 py-2 text-xs font-bold text-amber-700" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "completed")}>Tutup sesi</button>}
               {item.status === "active" && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id} onClick={() => extendSession(item)}>Perpanjang waktu</button>}
               {(["draft", "scheduled"].includes(item.status)) && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => changeSessionStatus(item, "cancelled")}>Batalkan</button>}
-              {item.status !== "completed" && item.status !== "cancelled" && item.token && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => window.confirm("Cabut token QR ini? QR yang sudah dibagikan tidak akan berlaku.") && void mutate(item.id, () => revokeSesiToken(item.id), "Token QR dicabut.")}>Cabut QR</button>}
+              {item.status !== "completed" && item.status !== "cancelled" && item.token && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => void revokeToken(item)}>Cabut QR</button>}
               {item.status !== "completed" && item.status !== "cancelled" && <button className="rounded-lg border px-3 py-2 text-xs font-bold" disabled={busyId === item.id} onClick={() => void mutate(item.id, () => rotateSesiToken(item.id), "Token baru dibuat. QR lama tidak berlaku.")}>{item.token ? "Rotasi token" : "Buat token QR"}</button>}
-              {(["draft", "scheduled", "cancelled"].includes(item.status)) && item.jumlah_akses === 0 && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => window.confirm("Hapus sesi ini?") && void mutate(item.id, () => deleteSesiUjian(item.id), "Sesi dihapus.")}>Hapus</button>}
+              {(["draft", "scheduled", "cancelled"].includes(item.status)) && item.jumlah_akses === 0 && <button className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-bold text-rose-600" disabled={busyId === item.id} onClick={() => void removeSession(item)}>Hapus</button>}
             </div>
           </div>)}
         </div>}
       </section>
       {qrBesar !== null && <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4" onClick={() => setQrBesar(null)}><div className="rounded-2xl bg-white p-5 text-center" onClick={(event) => event.stopPropagation()}><div className="mb-3 text-sm font-bold">QR Sesi Ujian</div><img className="size-[min(75vw,24rem)]" src={qrImages[qrBesar]} alt="QR Code sesi ujian"/><div className="mt-3 flex justify-center gap-2"><button className="rounded-lg border px-4 py-2 text-xs font-bold" onClick={() => document.documentElement.requestFullscreen?.()}>Layar penuh</button><button className="rounded-lg bg-[#202126] px-5 py-2 text-xs font-bold text-white" onClick={() => setQrBesar(null)}>Tutup</button></div></div></div>}
     </div>
+    {confirmDialog}
+    {promptDialog}
+    </>
   )
 }
 
 function LogAksesUjianPage({ showToast }: { showToast: (message: string) => void }) {
+  const { ask, dialog } = usePromptCard()
   const [logs, setLogs] = useState<LogAksesUjian[]>([])
   const [locked, setLocked] = useState<PesertaTerkunci[]>([])
   const [loading, setLoading] = useState(true)
@@ -2309,23 +2689,29 @@ function LogAksesUjianPage({ showToast }: { showToast: (message: string) => void
     return () => { alive = false }
   }, [])
   const requestAdminHelp = async (student: PesertaTerkunci) => {
-    const catatan = window.prompt(`Konfirmasi pemeriksaan untuk ${student.nama} (NIM ${student.nim}). Jelaskan hasil konfirmasi:`)
+    const catatan = await ask({
+      title: "Konfirmasi pemeriksaan mahasiswa",
+      description: `Tuliskan hasil konfirmasi langsung untuk ${student.nama} (NIM ${student.nim}) sebelum meminta bantuan Admin IT.`,
+      label: "Hasil konfirmasi",
+      placeholder: "Jelaskan hasil pemeriksaan",
+    })
     if (!catatan?.trim()) return
     setBusyId(student.id)
     try { await mintaBukaAksesPeserta(student.id, catatan.trim()); await refresh(); showToast("Permintaan bantuan dikirim kepada Admin IT.") }
     catch (error) { showToast(error instanceof Error ? error.message : "Permintaan bantuan gagal dikirim.") }
     finally { setBusyId(null) }
   }
-  return <div className="space-y-5">
+  return <><div className="space-y-5">
     <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
       <div className="border-b border-amber-100 p-5"><h2 className="font-display text-lg font-bold">Mahasiswa terkunci — konfirmasi Panitia</h2><p className="mt-1 text-xs text-slate-500">Setelah tiga kali meninggalkan halaman soal, akses dikunci. Konfirmasi mahasiswa secara langsung, lalu minta Admin IT membuka akses.</p></div>
       {loading ? <TableRowsSkeleton rows={2} /> : locked.length === 0 ? <p className="p-5 text-sm text-slate-400">Tidak ada mahasiswa yang terkunci.</p> : <div className="divide-y divide-slate-100">{locked.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · {student.pelanggaran_count}/3 pelanggaran</div><div className="mt-1 text-xs text-slate-500">Dikunci: {student.access_locked_at ?? "-"}{student.unlock_requested_at ? ` · Permintaan dikirim ${student.unlock_requested_at} oleh ${student.peminta ?? "Panitia"}` : ""}</div>{student.unlock_request_note && <div className="mt-1 text-xs text-amber-800">Catatan: {student.unlock_request_note}</div>}</div>{student.unlock_requested_at ? <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">Menunggu Admin IT</span> : <button className="rounded-lg bg-[#202126] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void requestAdminHelp(student)}>{busyId === student.id ? "Mengirim..." : "Konfirmasi & minta Admin IT"}</button>}</div>)}</div>}
     </section>
     <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5 font-display text-lg font-bold">Log Akses Ujian</div>{loading ? <TableRowsSkeleton /> : <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="p-4">Mahasiswa</th><th className="p-4">Mata kuliah</th><th className="p-4">Akses pertama</th><th className="p-4">Terakhir</th><th className="p-4">Jumlah</th></tr></thead><tbody>{logs.map((log) => <tr className="border-t" key={log.id}><td className="p-4">{log.nama}<div className="text-xs text-slate-500">NIM {log.nim}</div></td><td className="p-4">{log.mata_kuliah ?? "-"}</td><td className="p-4">{log.akses_pertama_pada}</td><td className="p-4">{log.akses_terakhir_pada}</td><td className="p-4">{log.jumlah_akses}</td></tr>)}{logs.length === 0 && <tr><td className="p-6 text-center text-sm text-slate-400" colSpan={5}>Belum ada akses tercatat.</td></tr>}</tbody></table></div>}</section>
-  </div>
+  </div>{dialog}</>
 }
 
 function PengawasanUjianPage({ showToast }: { showToast: (message: string) => void }) {
+  const { ask, dialog } = usePromptCard()
   const [requests, setRequests] = useState<PesertaTerkunci[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<number | null>(null)
@@ -2336,14 +2722,19 @@ function PengawasanUjianPage({ showToast }: { showToast: (message: string) => vo
     return () => { alive = false }
   }, [])
   const unlock = async (student: PesertaTerkunci) => {
-    const catatan = window.prompt(`Alasan pembukaan akses untuk ${student.nama} (NIM ${student.nim}):`)
+    const catatan = await ask({
+      title: "Buka akses mahasiswa",
+      description: `Akses soal untuk ${student.nama} (NIM ${student.nim}) akan dibuka kembali. Jelaskan alasan pembukaan akses.`,
+      label: "Alasan pembukaan",
+      placeholder: "Tuliskan alasan yang sudah dikonfirmasi",
+    })
     if (!catatan?.trim()) return
     setBusyId(student.id)
     try { await bukaAksesPeserta(student.id, catatan.trim()); await refresh(); showToast("Akses dibuka. Mahasiswa perlu verifikasi OTP kembali.") }
     catch (error) { showToast(error instanceof Error ? error.message : "Akses gagal dibuka.") }
     finally { setBusyId(null) }
   }
-  return <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5"><h2 className="font-display text-lg font-bold">Permintaan pembukaan akses ujian</h2><p className="mt-1 text-xs text-slate-500">Tinjau permintaan Panitia setelah konfirmasi langsung dengan mahasiswa.</p></div>{loading ? <TableRowsSkeleton rows={3} /> : requests.length === 0 ? <p className="p-5 text-sm text-slate-400">Belum ada permintaan bantuan dari Panitia.</p> : <div className="divide-y divide-slate-100">{requests.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · Pelanggaran {student.pelanggaran_count}/3</div><div className="mt-1 text-xs text-slate-500">Permintaan {student.unlock_requested_at} oleh {student.peminta ?? "Panitia"}</div><div className="mt-1 text-xs text-amber-800">Konfirmasi Panitia: {student.unlock_request_note}</div></div><button className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void unlock(student)}>{busyId === student.id ? "Membuka..." : "Buka akses mahasiswa"}</button></div>)}</div>}</section>
+  return <><section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5"><h2 className="font-display text-lg font-bold">Permintaan pembukaan akses ujian</h2><p className="mt-1 text-xs text-slate-500">Tinjau permintaan Panitia setelah konfirmasi langsung dengan mahasiswa.</p></div>{loading ? <TableRowsSkeleton rows={3} /> : requests.length === 0 ? <p className="p-5 text-sm text-slate-400">Belum ada permintaan bantuan dari Panitia.</p> : <div className="divide-y divide-slate-100">{requests.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · Pelanggaran {student.pelanggaran_count}/3</div><div className="mt-1 text-xs text-slate-500">Permintaan {student.unlock_requested_at} oleh {student.peminta ?? "Panitia"}</div><div className="mt-1 text-xs text-amber-800">Konfirmasi Panitia: {student.unlock_request_note}</div></div><button className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void unlock(student)}>{busyId === student.id ? "Membuka..." : "Buka akses mahasiswa"}</button></div>)}</div>}</section>{dialog}</>
 }
 // (yang selalu tersedia untuk peran Kaprodi — db.bank_soal memang tidak
 // dimuat untuk peran ini). Bersifat read-only.
@@ -2463,6 +2854,7 @@ function DetailSoalModal({
 
 function RecapPage({ showToast }: { showToast: (message: string) => void }) {
   const { db, decideRevisi, refresh } = useDb()
+  const { ask, dialog } = usePromptCard()
   const [deciding, setDeciding] = useState<number | null>(null)
   const [mengirim, setMengirim] = useState(false)
   const [detail, setDetail] = useState<RekapRow | null>(null)
@@ -2630,7 +3022,12 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
                               finally { setDeciding(null) }
                             }}>Setujui</button>
                             <button className="rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-700" disabled={deciding === row.bankSoalId} onClick={async () => {
-                              const catatan = window.prompt("Alasan penolakan soal:")
+                              const catatan = await ask({
+                                title: "Tolak soal",
+                                description: `Berikan alasan penolakan untuk soal ${row.nama_mk} agar dosen mengetahui bagian yang perlu diperbaiki.`,
+                                label: "Alasan penolakan",
+                                placeholder: "Jelaskan bagian yang perlu diperbaiki",
+                              })
                               if (catatan === null) return
                               setDeciding(row.bankSoalId!)
                               try { showToast(await putuskanPersetujuanSoal(row.bankSoalId!, "ditolak", catatan)); await refresh() }
@@ -2752,6 +3149,7 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
       {detail && (
         <DetailSoalModal onClose={() => setDetail(null)} row={detail} />
       )}
+      {dialog}
     </>
   )
 }
@@ -2893,6 +3291,7 @@ function LogsPage({
 
 function UsersPage({ showToast }: { showToast: (message: string) => void }) {
   const { db, createUser, refresh } = useDb()
+  const { ask, dialog } = useConfirmCard()
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [nama, setNama] = useState("")
@@ -2944,6 +3343,15 @@ function UsersPage({ showToast }: { showToast: (message: string) => void }) {
   }
 
   const handleToggle = async (user: User) => {
+    if (user.aktif) {
+      const confirmed = await ask({
+        title: "Nonaktifkan pengguna?",
+        description: `Akun ${user.nama} tidak dapat digunakan untuk masuk ke SIKASA sampai diaktifkan kembali.`,
+        confirmLabel: "Nonaktifkan akun",
+        tone: "warning",
+      })
+      if (!confirmed) return
+    }
     setBusyId(user.id)
     try {
       const updated = await toggleUser(user.id)
@@ -2963,6 +3371,13 @@ function UsersPage({ showToast }: { showToast: (message: string) => void }) {
   }
 
   const handleReset = async (user: User) => {
+    const confirmed = await ask({
+      title: "Reset kata sandi?",
+      description: `Kata sandi akun ${user.nama} akan diganti. Kata sandi sementara akan ditampilkan setelah proses selesai.`,
+      confirmLabel: "Reset kata sandi",
+      tone: "warning",
+    })
+    if (!confirmed) return
     setBusyId(user.id)
     try {
       const password = await resetUserPassword(user.id)
@@ -3207,6 +3622,7 @@ function UsersPage({ showToast }: { showToast: (message: string) => void }) {
           </table>
         </div>
       </section>
+      {dialog}
     </>
   )
 }
@@ -3217,6 +3633,7 @@ function MataKuliahPage({
   showToast: (message: string) => void
 }) {
   const { db, refresh } = useDb()
+  const { ask, dialog } = useConfirmCard()
   const list = db.mata_kuliah
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -3293,6 +3710,12 @@ function MataKuliahPage({
   }
 
   const handleDelete = async (mk: MataKuliah) => {
+    const confirmed = await ask({
+      title: "Hapus mata kuliah?",
+      description: `Mata kuliah ${mk.kode_mk} · ${mk.nama_mk} akan dihapus dari referensi sistem. Data ini mungkin masih dipakai oleh soal atau jadwal ujian.`,
+      confirmLabel: "Hapus mata kuliah",
+    })
+    if (!confirmed) return
     setBusyId(mk.id)
     try {
       await deleteMataKuliah(mk.id)
@@ -3480,6 +3903,7 @@ function MataKuliahPage({
           </table>
         </div>
       </section>
+      {dialog}
     </>
   )
 }
@@ -4818,7 +5242,7 @@ function AppShell() {
     )
 
   return (
-    <div className="min-h-screen bg-[#e8e9e9] text-slate-800">
+    <div className="sikasa-workspace min-h-screen bg-[#e8e9e9] text-slate-800">
       <Sidebar
         active={active}
         onClose={() => setSidebarOpen(false)}
@@ -4831,34 +5255,21 @@ function AppShell() {
         userName={currentUser?.nama ?? "Pengguna"}
       />
 
-      <main className="min-h-screen bg-[#f4f1ea] lg:ml-24">
-        <header className="sticky top-0 z-20 flex h-24 items-center border-b border-black/5 bg-[#f4f1ea]/90 px-5 backdrop-blur-md sm:px-8">
+      <main id="main-content" className="sikasa-main min-h-screen bg-[#f4f1ea] lg:ml-72">
+        <header className="sikasa-topbar sticky top-0 z-20 flex min-h-24 items-center border-b border-black/5 bg-[#f4f1ea]/90 px-5 py-4 backdrop-blur-md sm:px-8">
           <button
             className="mr-3 rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
             onClick={() => setSidebarOpen(true)}
           >
             <Icon name="menu" />
           </button>
-          <div>
+          <div className="min-w-0">
             <div className="font-display text-lg font-bold text-slate-900 sm:text-xl">
               {currentPage[0]}
             </div>
             <p className="hidden text-xs text-slate-400 sm:block">
               {currentPage[1]}
             </p>
-          </div>
-          <div className="ml-3 hidden items-center gap-2 lg:flex">
-            <div className="grid size-9 place-items-center rounded-xl bg-[#202126] text-[#f5cf25]">
-              <Icon name="lock" size={18} />
-            </div>
-            <div className="leading-tight">
-              <div className="font-display text-[13px] font-extrabold tracking-tight text-slate-900">
-                {APP_NAMA}
-              </div>
-              <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                {INSTANSI_KOP}
-              </div>
-            </div>
           </div>
           <div className="ml-auto flex items-center gap-3">
             <button
@@ -4890,7 +5301,7 @@ function AppShell() {
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                <div className="sikasa-dropdown-panel absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
                   <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                     <span className="text-xs font-bold text-slate-700">
                       Notifikasi
@@ -4954,7 +5365,7 @@ function AppShell() {
         </header>
 
         <div
-          className="animate-page mx-auto max-w-[1500px] p-5 sm:p-8 lg:pt-5"
+          className="sikasa-page animate-page mx-auto max-w-[1600px] p-5 sm:p-8 lg:px-10 lg:pt-8"
           key={active}
         >
           {active === "Dashboard" && (

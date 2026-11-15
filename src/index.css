@@ -101,6 +101,391 @@
   animation: page-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+/* Tema workspace SIKASA: arsip akademik modern dengan warna hijau tinta dan
+   aksen lime. Seluruh aturan berada di dalam shell setelah login; LoginPage
+   tetap memakai tampilan lamanya. */
+.sikasa-workspace {
+  --sikasa-ink: #173a35;
+  --sikasa-ink-soft: #244b45;
+  --sikasa-green: #14766a;
+  --sikasa-lime: #d9ef83;
+  --sikasa-canvas: #f2f6f3;
+  --sikasa-line: #dce7e1;
+  --sikasa-muted: #64766f;
+  background: var(--sikasa-canvas) !important;
+  color: #1b302b;
+}
+
+.sikasa-sidebar {
+  width: 18rem !important;
+  border-color: #294a44 !important;
+  background: linear-gradient(180deg, #173a35 0%, #102d29 100%) !important;
+  color: #f2f7f4 !important;
+  box-shadow: 12px 0 36px rgb(22 57 51 / 8%);
+}
+
+/* Scrollbar dokumen dan daftar menu dibuat tipis agar tidak tampak seperti
+   scrollbar sistem yang tebal di sisi kanan dashboard. */
+body:has(.sikasa-workspace) {
+  scrollbar-color: #bdcdc4 transparent;
+  scrollbar-width: thin;
+}
+
+body:has(.sikasa-workspace)::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+body:has(.sikasa-workspace)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body:has(.sikasa-workspace)::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: #bdcdc4;
+  background-clip: padding-box;
+}
+
+body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
+  background: #73988a;
+  background-clip: padding-box;
+}
+
+.sikasa-sidebar > div:nth-child(2) {
+  overscroll-behavior: contain;
+  scrollbar-color: #58776d transparent;
+  scrollbar-width: thin;
+}
+
+.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(205 227 214 / 26%);
+}
+
+.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar-thumb:hover {
+  background: #d9ef83;
+}
+
+.sikasa-sidebar-brand {
+  border-color: rgb(229 244 235 / 12%) !important;
+}
+
+.sikasa-sidebar-brand > div:first-child {
+  background: var(--sikasa-lime) !important;
+  color: var(--sikasa-ink) !important;
+  box-shadow: none !important;
+}
+
+.sikasa-sidebar-brand .font-display,
+.sikasa-sidebar-brand [class*="tracking-[0.2em]"] {
+  color: #f2f7f4 !important;
+}
+
+.sikasa-sidebar-brand > div:first-child .font-display {
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-brand-copy {
+  max-width: 100%;
+}
+
+.sikasa-institution {
+  max-width: 190px;
+  overflow-wrap: anywhere;
+  color: #b6cbc0 !important;
+}
+
+.sikasa-sidebar > div:nth-child(2) > div:first-child,
+.sikasa-sidebar > div:nth-child(2) nav button {
+  color: #c3d3cc !important;
+}
+
+.sikasa-sidebar > div:nth-child(2) nav button.is-active {
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-sidebar nav button {
+  min-height: 46px;
+  border: 1px solid transparent;
+  border-radius: 14px !important;
+  transition:
+    color 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.sikasa-sidebar nav button:hover {
+  border-color: rgb(224 240 232 / 12%);
+  background: rgb(255 255 255 / 8%) !important;
+  color: #fff !important;
+}
+
+.sikasa-sidebar nav button.is-active {
+  border-color: rgb(217 239 131 / 28%);
+  background: var(--sikasa-lime) !important;
+  color: var(--sikasa-ink) !important;
+  box-shadow: 0 8px 20px rgb(8 30 26 / 16%);
+}
+
+.sikasa-sidebar nav button.is-active > span:first-child {
+  color: var(--sikasa-green) !important;
+}
+
+.sikasa-sidebar nav button > span:first-child {
+  color: #a6c0b4 !important;
+}
+
+.sikasa-sidebar > div:last-child > div {
+  border-color: rgb(229 244 235 / 12%) !important;
+  background: rgb(255 255 255 / 6%) !important;
+}
+
+.sikasa-sidebar > div:last-child > div > div,
+.sikasa-sidebar > div:last-child > div p {
+  color: #d4e2dc !important;
+}
+
+.sikasa-sidebar > div:last-child > button {
+  color: #e5eee9;
+}
+
+.sikasa-sidebar > div:last-child > button:hover {
+  background: rgb(255 255 255 / 8%) !important;
+}
+
+.sikasa-sidebar > div:last-child > button > div:first-child {
+  background: #d9ef83 !important;
+  color: #173a35 !important;
+}
+
+.sikasa-sidebar > div:last-child > button[aria-label="Keluar"] {
+  color: #ffd3cb !important;
+}
+
+.sikasa-sidebar > div:last-child > button[aria-label="Keluar"]:hover {
+  background: rgb(255 255 255 / 8%) !important;
+}
+
+.sikasa-main {
+  margin-left: 18rem !important;
+  background:
+    radial-gradient(ellipse at 95% 0%, rgb(216 238 222 / 52%), transparent 28rem),
+    var(--sikasa-canvas) !important;
+  color: #1b302b;
+}
+
+.sikasa-topbar {
+  min-height: 5.5rem;
+  border-color: var(--sikasa-line) !important;
+  background: rgb(250 252 250 / 92%) !important;
+  box-shadow: 0 8px 24px rgb(28 61 51 / 4%);
+}
+
+.sikasa-topbar > div:first-of-type > div:first-child {
+  letter-spacing: -0.035em;
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-topbar > div:first-of-type > p {
+  color: var(--sikasa-muted) !important;
+}
+
+.sikasa-topbar > div:nth-of-type(2) > div:first-child {
+  background: var(--sikasa-ink) !important;
+  color: var(--sikasa-lime) !important;
+}
+
+.sikasa-topbar > div:nth-of-type(2) .font-display,
+.sikasa-topbar > div:nth-of-type(2) .text-slate-400 {
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-topbar button,
+.sikasa-topbar > div > div[class*="rounded-full"] {
+  border: 1px solid var(--sikasa-line);
+  box-shadow: 0 2px 8px rgb(31 64 54 / 4%);
+}
+
+.sikasa-topbar > div:last-child > div[class*="bg-[#202126]"] {
+  border-color: var(--sikasa-ink) !important;
+  background: var(--sikasa-ink) !important;
+  color: #f4f8f5 !important;
+}
+
+.sikasa-dropdown-panel {
+  width: min(20rem, calc(100vw - 2rem));
+  border-color: var(--sikasa-line) !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 20px 50px rgb(19 58 49 / 16%) !important;
+  transform-origin: top right;
+  animation: dropdown-enter 150ms ease-out both;
+}
+
+.sikasa-dropdown-panel > div:first-child {
+  border-color: var(--sikasa-line) !important;
+  background: #f7faf7;
+}
+
+.sikasa-dropdown-panel button:hover {
+  background-color: #f1f7f2 !important;
+}
+
+@keyframes dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.sikasa-page {
+  min-height: calc(100vh - 5.5rem);
+}
+
+.sikasa-main .animate-page h1,
+.sikasa-main .animate-page h2,
+.sikasa-main .animate-page h3 {
+  color: var(--sikasa-ink);
+  letter-spacing: -0.025em;
+}
+
+.sikasa-main .animate-page [class*="rounded-2xl"][class*="bg-white"],
+.sikasa-main .animate-page [class*="rounded-3xl"][class*="bg-white"],
+.sikasa-main .animate-page [class*="rounded-xl"][class*="bg-white"][class*="border"],
+.sikasa-main .animate-page [class*="rounded-[2rem]"][class*="bg-white"] {
+  border-color: var(--sikasa-line) !important;
+  box-shadow: 0 12px 32px rgb(25 60 49 / 5%);
+}
+
+.sikasa-main .animate-page [class*="bg-[#202126]"] {
+  background-color: var(--sikasa-ink) !important;
+}
+
+.sikasa-main .animate-page [class*="bg-[#f5cf25]"] {
+  background-color: var(--sikasa-lime) !important;
+}
+
+.sikasa-main .animate-page input:not([type="checkbox"]):not([type="radio"]),
+.sikasa-main .animate-page select,
+.sikasa-main .animate-page textarea {
+  min-height: 44px;
+  border-color: #d6e2db !important;
+  border-radius: 12px !important;
+  background-color: #fff !important;
+  color: #203b34 !important;
+}
+
+.sikasa-main .animate-page select {
+  appearance: none;
+  padding-right: 2.75rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314766a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") !important;
+  background-position: right 0.75rem center !important;
+  background-repeat: no-repeat !important;
+  background-size: 1rem !important;
+  cursor: pointer;
+}
+
+.sikasa-main .animate-page select option {
+  background: #fff;
+  color: #203b34;
+}
+
+.sikasa-main .animate-page select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.sikasa-main .animate-page input:focus,
+.sikasa-main .animate-page select:focus,
+.sikasa-main .animate-page textarea:focus {
+  border-color: #398c78 !important;
+  box-shadow: 0 0 0 3px rgb(57 140 120 / 15%);
+}
+
+.sikasa-main .animate-page table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.sikasa-main .animate-page thead th {
+  background: #f1f6f2;
+  color: #45645a;
+  font-weight: 700;
+}
+
+.sikasa-main .animate-page th,
+.sikasa-main .animate-page td {
+  border-color: #e3ebe6 !important;
+}
+
+.sikasa-main .animate-page tbody tr:hover {
+  background-color: #f7faf7;
+}
+
+.sikasa-main .animate-page button {
+  touch-action: manipulation;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.sikasa-main .animate-page button:active {
+  transform: translateY(1px);
+}
+
+.sikasa-workspace :focus-visible {
+  outline-color: #94b84a;
+}
+
+/* Ikon, avatar, dan indikator status memakai ukuran tetap di dalam baris flex.
+   Tanpa ini, flex-shrink dapat membuat bentuk lingkaran tampak oval. */
+.sikasa-workspace [class*="size-"] {
+  flex-shrink: 0 !important;
+}
+
+.student-shell [class*="size-"] {
+  flex-shrink: 0 !important;
+}
+
+@media (max-width: 1023px) {
+  .sikasa-sidebar {
+    width: min(18rem, calc(100vw - 3rem)) !important;
+  }
+
+  .sikasa-main {
+    margin-left: 0 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .sikasa-topbar {
+    min-height: 4.5rem;
+  }
+
+  .sikasa-page {
+    padding-inline: 1rem;
+  }
+}
+
 /* Layar tunggu splash — adaptasi "Geometric shapes loading animation"
    (Samuel Medvedowsky, dribbble.com/shots/4037784). Dibungkus .geo-loading
    agar cakupannya hanya layar splash, bukan seluruh body dokumen. */

@@ -1,1 +1,285 @@
-.student-shell{max-width:1100px;min-height:100vh;margin:auto;padding:20px;background:#f4f5f7;color:#202126;font:16px system-ui,sans-serif}.student-brand{display:flex;align-items:center;gap:12px;margin:0 0 24px}.student-brand span:last-child{display:grid;gap:2px}.student-brand small{color:#647084;font-size:12px}.student-mark{display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#202126;color:#f5cf25;font-weight:900;font-size:20px}.student-shell h1{margin:0 0 14px;font-size:25px}.student-shell h2{margin:0 0 7px;font-size:19px}.exam-card,.verify-card,.pdf-shell{padding:20px;margin:14px 0;border:1px solid #e2e5e9;border-radius:18px;background:#fff}.exam-card p,.verify-card p{color:#647084;line-height:1.5}.exam-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;color:#647084;font-size:13px}.status-ready{padding:10px;border-radius:10px;background:#ecfdf5;color:#047857!important}.status-wait{padding:10px;border-radius:10px;background:#fff7ed;color:#9a3412!important}.verify-card form{margin-top:15px}.verify-card label{display:block;margin:12px 0 6px;font-size:13px;font-weight:700}.verify-card input{width:100%;padding:12px;border:1px solid #d8dde5;border-radius:10px;font:inherit}.verify-card button,.pdf-actions button,.student-refresh{padding:10px 13px;border:0;border-radius:9px;background:#202126;color:white;font-weight:700;cursor:pointer}.verify-card button:disabled,.pdf-actions button:disabled,.student-refresh:disabled{opacity:.5;cursor:not-allowed}.student-refresh{margin:0 0 12px}.student-error,.student-notice{padding:12px;border-radius:10px}.student-error{background:#fff0f0;color:#a12b2b}.student-notice{background:#eff6ff;color:#1d4ed8}.pdf-toolbar{display:grid;gap:9px;padding-bottom:12px;font-size:12px;font-weight:700}.pdf-actions{display:flex;flex-wrap:wrap;align-items:center;gap:7px}.pdf-actions span{padding:0 4px}.pdf-actions button{font-size:12px}.pdf-viewport{position:relative;display:flex;justify-content:center;min-height:60vh;max-height:78vh;overflow:auto;background:#e7e9ed;padding:14px}.pdf-page-wrap{position:relative;align-self:flex-start;max-width:100%;background:#fff;box-shadow:0 3px 14px #0002}.pdf-page-wrap canvas{display:block;max-width:100%;height:auto}.pdf-watermark{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden;pointer-events:none;text-align:center;color:#111;opacity:.14;font-size:clamp(15px,3vw,28px);font-weight:800;transform:rotate(-25deg);word-break:break-word}.student-footer{padding:16px 4px;color:#647084;font-size:12px}@media(max-width:600px){.student-shell{padding:12px}.exam-card,.verify-card,.pdf-shell{padding:14px}.pdf-viewport{min-height:55vh;padding:8px}.pdf-actions{gap:5px}.pdf-actions button{padding:9px;font-size:11px}}
+.student-shell {
+  --student-ink: #173a35;
+  --student-green: #14766a;
+  --student-lime: #d9ef83;
+  --student-line: #dce7e1;
+  width: min(1100px, 100%);
+  min-height: 100vh;
+  margin: auto;
+  padding: clamp(16px, 3vw, 32px);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(216 238 222 / 68%), transparent 30rem),
+    #f2f6f3;
+  color: #203b34;
+  font: 16px/1.5 "Plus Jakarta Sans", system-ui, sans-serif;
+}
+
+.student-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 26px;
+  color: var(--student-ink);
+}
+
+.student-brand span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.student-brand small {
+  color: #64766f;
+  font-size: 12px;
+}
+
+.student-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--student-ink);
+  color: var(--student-lime);
+  font-weight: 900;
+  font-size: 20px;
+  box-shadow: 0 8px 20px rgb(23 58 53 / 18%);
+}
+
+.student-shell h1,
+.student-shell h2 {
+  color: var(--student-ink);
+  letter-spacing: -0.03em;
+}
+
+.student-shell h1 {
+  margin: 0 0 14px;
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1.2;
+}
+
+.student-shell h2 {
+  margin: 0 0 7px;
+  font-size: 19px;
+}
+
+.exam-card,
+.verify-card,
+.pdf-shell {
+  margin: 14px 0;
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid var(--student-line);
+  border-radius: 20px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 12px 32px rgb(25 60 49 / 5%);
+}
+
+.exam-card p,
+.verify-card p {
+  color: #64766f;
+  line-height: 1.6;
+}
+
+.exam-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 10px;
+  color: #52685f;
+  font-size: 13px;
+}
+
+.exam-meta > * {
+  overflow-wrap: anywhere;
+}
+
+.status-ready,
+.status-wait {
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 650;
+}
+
+.status-ready {
+  background: #eaf5e9;
+  color: #245d43 !important;
+}
+
+.status-wait {
+  background: #fff4df;
+  color: #805414 !important;
+}
+
+.verify-card form {
+  margin-top: 15px;
+}
+
+.verify-card label {
+  display: block;
+  margin: 12px 0 6px;
+  color: var(--student-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.verify-card input {
+  width: 100%;
+  min-height: 46px;
+  padding: 12px;
+  border: 1px solid #d6e2db;
+  border-radius: 12px;
+  background: #fff;
+  color: #203b34;
+  font: inherit;
+}
+
+.verify-card input:focus-visible {
+  outline: 3px solid rgb(57 140 120 / 32%);
+  border-color: #398c78;
+  outline-offset: 1px;
+}
+
+.verify-card button,
+.pdf-actions button,
+.student-refresh {
+  min-height: 44px;
+  padding: 11px 15px;
+  border: 1px solid var(--student-ink);
+  border-radius: 12px;
+  background: var(--student-ink);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.verify-card button:hover,
+.pdf-actions button:hover,
+.student-refresh:hover {
+  background: var(--student-green);
+}
+
+.verify-card button:active,
+.pdf-actions button:active,
+.student-refresh:active {
+  transform: translateY(1px);
+}
+
+.verify-card button:disabled,
+.pdf-actions button:disabled,
+.student-refresh:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.student-refresh {
+  margin: 0 0 12px;
+}
+
+.student-error,
+.student-notice {
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.student-error {
+  background: #fff0ed;
+  color: #922d25;
+}
+
+.student-notice {
+  background: #eaf4ef;
+  color: #245d43;
+}
+
+.pdf-toolbar {
+  display: grid;
+  gap: 10px;
+  padding-bottom: 14px;
+  color: #35564d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pdf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdf-actions span {
+  padding: 0 4px;
+}
+
+.pdf-actions button {
+  font-size: 12px;
+}
+
+.pdf-viewport {
+  position: relative;
+  display: flex;
+  min-height: 60vh;
+  max-height: 78vh;
+  justify-content: center;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 14px;
+  background: #e5ece7;
+}
+
+.pdf-page-wrap {
+  position: relative;
+  align-self: flex-start;
+  max-width: 100%;
+  background: #fff;
+  box-shadow: 0 8px 26px rgb(20 45 38 / 18%);
+}
+
+.pdf-page-wrap canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.pdf-watermark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+  text-align: center;
+  color: #111;
+  opacity: 0.14;
+  font-size: clamp(15px, 3vw, 28px);
+  font-weight: 800;
+  transform: rotate(-25deg);
+  word-break: break-word;
+}
+
+.student-footer {
+  padding: 18px 4px;
+  color: #64766f;
+  font-size: 12px;
+}
+
+@media (max-width: 600px) {
+  .student-shell {
+    padding: 14px;
+  }
+
+  .pdf-viewport {
+    min-height: 55vh;
+    padding: 8px;
+  }
+
+  .pdf-actions {
+    gap: 6px;
+  }
+
+  .pdf-actions button {
+    min-height: 42px;
+    padding: 9px;
+    font-size: 11px;
+  }
+}
