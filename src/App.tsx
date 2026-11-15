@@ -276,6 +276,10 @@ function SkeletonBlock({ className = "" }: { className?: string }) {
   return <div aria-hidden="true" className={`animate-pulse rounded-md bg-slate-200/80 ${className}`} />
 }
 
+function UploadProgress({ label = "Sedang mengunggah berkas..." }: { label?: string }) {
+  return <div role="status" aria-live="polite" className="mt-2 flex items-center gap-2 text-xs font-semibold text-emerald-700"><span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />{label}</div>
+}
+
 function SessionListSkeleton() {
   return (
     <div role="status" aria-label="Memuat daftar sesi" className="divide-y divide-slate-100">
@@ -584,7 +588,7 @@ function Sidebar({
       {open && (
         <button
           aria-label="Tutup menu"
-          className="fixed inset-0 z-30 bg-slate-950/50 lg:hidden"
+          className="fixed inset-0 z-30 bg-slate-950/50 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
@@ -2028,6 +2032,7 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
             Maksimal 10 MB · Hanya format PDF
           </div>
         </label>
+        {busy ? <UploadProgress label="Mengunggah dan mengamankan soal..." /> : file && <p className="mt-2 text-xs font-medium text-emerald-700" role="status">Berkas siap diunggah.</p>}
         <label className="mt-5 flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
           <input
             className="mt-0.5"
@@ -2377,6 +2382,7 @@ function TemplatePage({ showToast }: { showToast: (message: string) => void }) {
                 PDF, DOC, atau DOCX · Maksimal 10 MB
               </div>
             </label>
+            {busy ? <UploadProgress label="Mengunggah template..." /> : file && <p className="mt-2 text-xs font-medium text-emerald-700" role="status">Berkas siap disimpan.</p>}
           </div>
         </div>
 
@@ -2809,7 +2815,8 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
                         <button type="button" className="text-xs font-semibold text-emerald-700 underline hover:text-emerald-800" onClick={downloadRosterTemplate}>
                           Unduh template CSV
                         </button>
-                        <input aria-label="Impor roster peserta CSV" type="file" accept=".csv,text/csv" className="max-w-[200px] text-xs" disabled={busyId === item.id} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadRoster(item, file); event.currentTarget.value = "" }} />
+                        <label htmlFor={`roster-file-${item.id}`} className={`inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 ${busyId === item.id ? "pointer-events-none opacity-50" : ""}`}><Icon name="upload" size={15} /> Pilih file CSV<input id={`roster-file-${item.id}`} aria-label="Impor roster peserta CSV" type="file" accept=".csv,text/csv" className="sr-only" disabled={busyId === item.id} onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadRoster(item, file); event.currentTarget.value = "" }} /></label>
+                        {busyId === item.id && <UploadProgress label="Mengimpor roster peserta..." />}
                         {item.jumlah_peserta > 0 && (
                           <button className="text-xs font-semibold text-rose-600 underline hover:text-rose-700" disabled={busyId === item.id} onClick={() => void removeRoster(item)}>
                             Hapus roster
@@ -2923,7 +2930,7 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
         </div>}
       </section>
       {qrBesar !== null && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 sm:p-6" onClick={() => setQrBesar(null)}>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-4 backdrop-blur-sm sm:p-6" onClick={() => setQrBesar(null)}>
           <div className="rounded-2xl bg-white p-6 sm:p-8 text-center max-w-md w-full" onClick={(event) => event.stopPropagation()}>
             <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[10px] font-bold text-emerald-700 mb-4">
               <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
@@ -4323,7 +4330,7 @@ function MyQuestionsPage({
         </div>
       </section>
       {revisiFor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
             <div className="flex items-start justify-between">
               <div>
@@ -4395,6 +4402,7 @@ function MyQuestionsPage({
                 Maksimal 10 MB · PDF saja · tunggu keputusan sebelum mengirim revisi berikutnya
               </div>
             </label>
+            {kirimRevisi && <UploadProgress label="Mengunggah berkas revisi..." />}
             <div className="mt-6 flex gap-3">
               <button
                 className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600 disabled:opacity-50"
@@ -5749,7 +5757,7 @@ function AppShell() {
             {helpOpen && (
         <HelpPanel role={safeRole} onClose={() => setHelpOpen(false)} />
       )}
-      {profileOpen && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setProfileOpen(false) }}><section role="dialog" aria-modal="true" aria-labelledby="profile-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 id="profile-title" className="text-xl font-bold text-slate-900">Profil saya</h2><p className="mt-1 text-sm text-slate-500">Perbarui foto, nama, atau kata sandi akun.</p></div><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Tutup" onClick={() => setProfileOpen(false)}>✕</button></div><form className="mt-5 grid gap-4" onSubmit={async (event) => { event.preventDefault(); setProfileSaving(true); try { await updateProfile({ nama: profileName.trim(), currentPassword: currentPassword || undefined, newPassword: newPassword || undefined, photo: profilePhoto }); setProfileOpen(false); setToast("Profil berhasil diperbarui.") } catch (error) { setToast(error instanceof Error ? error.message : "Profil gagal diperbarui.") } finally { setProfileSaving(false) } }}><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Foto profil<input type="file" accept="image/*" onChange={(event) => setProfilePhoto(event.target.files?.[0])} className="rounded-xl border border-slate-200 p-3 text-sm" /></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Nama<input required maxLength={150} value={profileName} onChange={(event) => setProfileName(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><div className="border-t border-slate-100 pt-4 text-sm font-bold text-slate-800">Ganti kata sandi</div><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi saat ini<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi baru (min. 8 karakter)<input type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><p className="text-xs text-slate-500">Isi kedua kolom kata sandi hanya jika ingin menggantinya.</p><div className="flex justify-end gap-2"><button type="button" className="rounded-xl border px-4 py-2.5 text-sm font-semibold" onClick={() => setProfileOpen(false)}>Batal</button><button disabled={profileSaving} className="rounded-xl bg-[#202126] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">{profileSaving ? "Menyimpan..." : "Simpan perubahan"}</button></div></form></section></div>}
+      {profileOpen && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setProfileOpen(false) }}><section role="dialog" aria-modal="true" aria-labelledby="profile-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 id="profile-title" className="text-xl font-bold text-slate-900">Profil saya</h2><p className="mt-1 text-sm text-slate-500">Perbarui foto, nama, atau kata sandi akun.</p></div><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Tutup" onClick={() => setProfileOpen(false)}>✕</button></div><form className="mt-5 grid gap-4" onSubmit={async (event) => { event.preventDefault(); setProfileSaving(true); try { await updateProfile({ nama: profileName.trim(), currentPassword: currentPassword || undefined, newPassword: newPassword || undefined, photo: profilePhoto }); setProfileOpen(false); setToast("Profil berhasil diperbarui.") } catch (error) { setToast(error instanceof Error ? error.message : "Profil gagal diperbarui.") } finally { setProfileSaving(false) } }}><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Foto profil<span className="relative flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50/50"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm"><Icon name={profilePhoto ? "check" : "upload"} size={18} /></span><span className="min-w-0 flex-1 truncate">{profilePhoto?.name || "Pilih foto profil"}<small className="block text-xs font-normal text-slate-400">JPG, PNG, atau WebP · Maks. 3 MB</small></span><input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file && file.size > 3 * 1024 * 1024) { setToast("Ukuran foto maksimal 3 MB."); event.target.value = ""; return } setProfilePhoto(file) }} className="absolute inset-0 cursor-pointer opacity-0" /></span></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Nama<input required maxLength={150} value={profileName} onChange={(event) => setProfileName(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><div className="border-t border-slate-100 pt-4 text-sm font-bold text-slate-800">Ganti kata sandi</div><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi saat ini<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi baru (min. 8 karakter)<input type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><p className="text-xs text-slate-500">Isi kedua kolom kata sandi hanya jika ingin menggantinya.</p><div className="flex justify-end gap-2"><button type="button" className="rounded-xl border px-4 py-2.5 text-sm font-semibold" onClick={() => setProfileOpen(false)}>Batal</button><button disabled={profileSaving} className="rounded-xl bg-[#202126] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">{profileSaving ? "Menyimpan..." : "Simpan perubahan"}</button></div></form></section></div>}
       {toast && (
         <div role="status" className="fixed bottom-6 right-6 z-[60] flex max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-xs font-semibold text-white shadow-2xl">
           <span className="grid size-6 place-items-center rounded-full bg-emerald-500">
