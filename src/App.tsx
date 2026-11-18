@@ -997,7 +997,8 @@ const loginSlides: {
   detail: string
   ikon: IconName
   aksen: string
-  gradasi: string
+  foto: string
+  posisiFoto: string
 }[] = [
   {
     tag: "Nilai 01",
@@ -1006,8 +1007,8 @@ const loginSlides: {
       "Naskah soal tersimpan terenkripsi di server pusat dan tidak pernah tersimpan di laptop pribadi.",
     ikon: "shield",
     aksen: "#f5cf25",
-    gradasi:
-      "radial-gradient(120% 85% at 50% 118%, rgba(245,207,37,0.22) 0%, rgba(245,207,37,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(245,207,37,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #202126 0%, #26272d 48%, #1a1b1e 100%)",
+    foto: "/SLIDE/Unsika.jpg",
+    posisiFoto: "center 54%",
   },
   {
     tag: "Nilai 02",
@@ -1016,8 +1017,8 @@ const loginSlides: {
       "Setiap unggah, revisi, persetujuan, dan akses soal tercatat beserta waktunya.",
     ikon: "history",
     aksen: "#f5cf25",
-    gradasi:
-      "radial-gradient(120% 85% at 50% 118%, rgba(245,207,37,0.22) 0%, rgba(245,207,37,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(245,207,37,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #202126 0%, #26272d 48%, #1a1b1e 100%)",
+    foto: "/SLIDE/e9e0d_unsika.jpeg",
+    posisiFoto: "center 62%",
   },
   {
     tag: "Nilai 03",
@@ -1026,24 +1027,10 @@ const loginSlides: {
       "Soal dibuka dari QR sesuai jadwal ujian dan akses mahasiswa tercatat.",
     ikon: "qrcode",
     aksen: "#f5cf25",
-    gradasi:
-      "radial-gradient(120% 85% at 50% 118%, rgba(245,207,37,0.22) 0%, rgba(245,207,37,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(245,207,37,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #202126 0%, #26272d 48%, #1a1b1e 100%)",
+    foto: "/SLIDE/1.jpg",
+    posisiFoto: "center 42%",
   },
 ]
-
-// Posisi bintang (persen) pada langit kartu galeri.
-const bintangLogin = [
-  [8, 12, 1.2],
-  [22, 6, 0.9],
-  [34, 18, 1.5],
-  [48, 8, 1],
-  [63, 15, 1.3],
-  [76, 5, 0.8],
-  [88, 20, 1.1],
-  [14, 32, 1],
-  [92, 38, 1.4],
-  [58, 30, 0.9],
-] as const
 
 function LoginPage({
   onLogin,
@@ -1075,178 +1062,6 @@ function LoginPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const karya = loginSlides[slide]
-  // Ilustrasi berbeda untuk tiap slide — bukan cuma ganti warna.
-  const renderIlustrasi = () => {
-    if (karya.ikon === "history")
-      return (
-        <svg
-          aria-hidden="true"
-          className="h-full w-full"
-          fill="none"
-          viewBox="0 0 200 180"
-        >
-          <circle
-            cx="86"
-            cy="92"
-            r="76"
-            stroke={karya.aksen}
-            strokeLinecap="round"
-            strokeOpacity="0.18"
-            strokeWidth="1.5"
-          />
-          <path
-            d="M52 20 V164"
-            stroke={karya.aksen}
-            strokeLinecap="round"
-            strokeOpacity="0.8"
-            strokeWidth="2"
-          />
-          {[40, 80, 120, 158].map((y, i) => (
-            <g key={y}>
-              <circle
-                cx="52"
-                cy={y}
-                r="6"
-                fill={karya.aksen}
-                stroke={karya.aksen}
-                strokeOpacity="0.4"
-                strokeWidth="6"
-              />
-              <circle
-                cx="52"
-                cy={y}
-                r="13"
-                strokeOpacity="0.35"
-                strokeWidth="1.5"
-              />
-              <path
-                d={`M72 ${y} H${138 - i * 12}`}
-                stroke={karya.aksen}
-                strokeLinecap="round"
-                strokeOpacity={0.65 - i * 0.12}
-                strokeWidth="6"
-              />
-            </g>
-          ))}
-        </svg>
-      )
-    if (karya.ikon === "printer")
-      return (
-        <svg
-          aria-hidden="true"
-          className="h-full w-full"
-          fill="none"
-          viewBox="0 0 200 180"
-        >
-          <circle
-            cx="100"
-            cy="92"
-            r="76"
-            stroke={karya.aksen}
-            strokeOpacity="0.18"
-            strokeWidth="1.5"
-          />
-          <rect
-            fill={karya.aksen}
-            fillOpacity="0.12"
-            height="98"
-            rx="8"
-            transform="rotate(-7 95 83)"
-            width="74"
-            x="58"
-            y="34"
-          />
-          <rect
-            fill="#202126"
-            fillOpacity="0.55"
-            height="100"
-            rx="8"
-            stroke={karya.aksen}
-            strokeOpacity="0.9"
-            strokeWidth="2"
-            width="76"
-            x="64"
-            y="44"
-          />
-          <path
-            d="M78 66 H126 M78 82 H126 M78 98 H110"
-            stroke={karya.aksen}
-            strokeLinecap="round"
-            strokeOpacity="0.7"
-            strokeWidth="4"
-          />
-          <circle
-            cx="134"
-            cy="122"
-            fill={karya.aksen}
-            fillOpacity="0.9"
-            r="22"
-          />
-          <path
-            d="M124 122 l7 8 l13 -16"
-            stroke="#202126"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="3.5"
-          />
-        </svg>
-      )
-    // shield — Aman & Terenkripsi
-    return (
-      <svg
-        aria-hidden="true"
-        className="h-full w-full"
-        fill="none"
-        viewBox="0 0 200 180"
-      >
-        <circle
-          cx="100"
-          cy="92"
-          r="74"
-          stroke={karya.aksen}
-          strokeDasharray="4 9"
-          strokeOpacity="0.28"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M100 22 L162 44 V96 C162 128 100 160 100 160 C100 160 38 128 38 96 V44 Z"
-          stroke={karya.aksen}
-          strokeOpacity="0.9"
-          strokeWidth="2"
-        />
-        <path
-          d="M100 34 L150 51 V96 C150 121 100 148 100 148 C100 148 50 121 50 96 V51 Z"
-          fill={karya.aksen}
-          fillOpacity="0.1"
-        />
-        <rect
-          fill={karya.aksen}
-          fillOpacity="0.85"
-          height="22"
-          rx="5"
-          width="28"
-          x="86"
-          y="92"
-        />
-        <path
-          d="M91 92 V86 a9 9 0 0 1 18 0 V92"
-          stroke={karya.aksen}
-          strokeLinecap="round"
-          strokeWidth="2.5"
-        />
-        <circle cx="100" cy="103" fill="#202126" r="3" />
-        <circle cx="170" cy="58" fill={karya.aksen} r="3" />
-        <circle cx="177" cy="84" fill={karya.aksen} fillOpacity="0.7" r="2" />
-        <circle
-          cx="168"
-          cy="108"
-          fill={karya.aksen}
-          fillOpacity="0.5"
-          r="2.5"
-        />
-      </svg>
-    )
-  }
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#fbf9f0] p-4 sm:p-6 lg:h-screen lg:overflow-hidden">
       <div className="flex w-full max-w-5xl overflow-hidden rounded-[34px] bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] lg:h-[calc(100vh-3rem)]">
@@ -1256,32 +1071,24 @@ function LoginPage({
           {/* ---------------------------------------------------------- */}
           <section className="p-3 sm:p-4 lg:p-5">
             <div
-              className="relative flex h-[300px] flex-col overflow-hidden rounded-[26px] p-7 text-white transition-[background-image] duration-700 sm:h-[360px] lg:h-full"
-              style={{ backgroundImage: karya.gradasi }}
+              className="relative flex h-[300px] flex-col overflow-hidden rounded-[26px] p-7 text-white sm:h-[360px] lg:h-full"
             >
-              {/* Ilustrasi utama — beda bentuk tiap slide */}
-              <div
-                className="animate-login-right pointer-events-none absolute right-4 top-1/2 h-[170px] w-[170px] sm:right-8 sm:h-[210px] sm:w-[210px]"
-                key={`ilustrasi-${slide}`}
-              >
-                {renderIlustrasi()}
-              </div>
-              {bintangLogin.map(([x, y, skala]) => (
-                <div
-                  aria-hidden="true"
-                  className="absolute size-1 rounded-full bg-white/80"
-                  key={`${x}-${y}`}
-                  style={{
-                    left: `${x}%`,
-                    top: `${y}%`,
-                    transform: `scale(${skala})`,
-                  }}
-                />
-              ))}
-              {/* Gelap bertahap di bawah agar teks terbaca */}
+              <img
+                key={`foto-${slide}`}
+                src={karya.foto}
+                alt=""
+                aria-hidden="true"
+                draggable={false}
+                className="animate-login-photo absolute inset-0 size-full object-cover"
+                style={{ objectPosition: karya.posisiFoto }}
+              />
               <div
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#111214] via-[#111214]/75 to-transparent"
+                className="absolute inset-0"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(38,36,29,.2) 0%, rgba(38,36,29,.16) 38%, rgba(17,18,20,.93) 100%)",
+                }}
               />
               <div className="relative flex items-start justify-end gap-4">
                 <button
