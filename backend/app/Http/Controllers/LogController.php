@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 class LogController extends Controller
 {
     /**
-     * Log aktivitas — dosen hanya miliknya; kaprodi/panitia/admin sesuai aksi.
+     * Log aktivitas — dosen dan panitia hanya dapat melihat aktivitas miliknya.
      */
     public function aktivitas(Request $request): JsonResponse
     {
@@ -21,7 +21,7 @@ class LogController extends Controller
         if ($user->role === 'dosen') {
             $query->where('user_id', $user->id);
         } elseif ($user->role === 'panitia') {
-            $query->where('aksi', 'cetak');
+            $query->where('user_id', $user->id);
         }
 
         $logs = $query->limit(300)->get()->map(fn (LogAktivitas $l) => [

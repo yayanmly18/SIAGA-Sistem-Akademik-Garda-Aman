@@ -1495,6 +1495,21 @@ export function labelAksi(aksi: string): string {
     case "status_sesi_ujian":
       return "Status Sesi Ujian"
 
+    case "sesi_ujian_diperpanjang":
+      return "Sesi Ujian Diperpanjang"
+
+    case "token_sesi_dicabut":
+      return "Token QR Dicabut"
+
+    case "roster_peserta_diimpor":
+      return "Daftar Peserta Diimpor"
+
+    case "roster_peserta_dihapus":
+      return "Daftar Peserta Dihapus"
+
+    case "permintaan_buka_akses_dibersihkan":
+      return "Permintaan Buka Akses Dibersihkan"
+
     case "token_sesi_dirotasi":
       return "Token QR Dirotasi"
 

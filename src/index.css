@@ -135,10 +135,10 @@
 
 .sikasa-sidebar {
   width: 18rem !important;
-  border-color: #403b2d !important;
-  background: linear-gradient(180deg, #29271f 0%, #1d1b16 100%) !important;
-  color: #fbf8ed !important;
-  box-shadow: 12px 0 36px rgb(56 45 10 / 10%);
+  border-color: #e0b300 !important;
+  background: linear-gradient(180deg, #ffdc45 0%, #f2c400 58%, #e8b900 100%) !important;
+  color: var(--sikasa-ink) !important;
+  box-shadow: 12px 0 36px rgb(120 90 0 / 12%);
 }
 
 /* Scrollbar dokumen dan daftar menu dibuat tipis agar tidak tampak seperti
@@ -193,22 +193,22 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-sidebar-brand {
-  border-color: rgb(229 244 235 / 12%) !important;
+  border-color: rgb(112 87 0 / 18%) !important;
 }
 
 .sikasa-sidebar-brand > div:first-child {
-  background: var(--sikasa-lime) !important;
-  color: var(--sikasa-ink) !important;
+  background: var(--sikasa-ink) !important;
+  color: var(--sikasa-lime) !important;
   box-shadow: none !important;
 }
 
 .sikasa-sidebar-brand .font-display,
 .sikasa-sidebar-brand [class*="tracking-[0.2em]"] {
-  color: #fbf8ed !important;
+  color: var(--sikasa-ink) !important;
 }
 
 .sikasa-sidebar-brand > div:first-child .font-display {
-  color: var(--sikasa-ink) !important;
+  color: var(--sikasa-lime) !important;
 }
 
 .sikasa-brand-copy {
@@ -218,16 +218,16 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .sikasa-institution {
   max-width: 190px;
   overflow-wrap: anywhere;
-  color: #c8c0a3 !important;
+  color: #5d4a08 !important;
 }
 
 .sikasa-sidebar > div:nth-child(2) > div:first-child,
 .sikasa-sidebar > div:nth-child(2) nav button {
-  color: #d1cbb8 !important;
+  color: #51430d !important;
 }
 
 .sikasa-sidebar > div:nth-child(2) nav button.is-active {
-  color: var(--sikasa-ink) !important;
+  color: #fff8df !important;
 }
 
 .sikasa-sidebar nav button {
@@ -242,51 +242,67 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-sidebar nav button:hover {
-  border-color: rgb(255 245 196 / 18%);
-  background: rgb(255 255 255 / 8%) !important;
-  color: #fff !important;
+  border-color: rgb(112 87 0 / 18%);
+  background: rgb(255 255 255 / 34%) !important;
+  color: var(--sikasa-ink) !important;
 }
 
 .sikasa-sidebar nav button.is-active {
-  border-color: rgb(245 207 37 / 42%);
-  background: var(--sikasa-lime) !important;
-  color: var(--sikasa-ink) !important;
-  box-shadow: 0 8px 20px rgb(8 30 26 / 16%);
+  border-color: var(--sikasa-ink) !important;
+  background: var(--sikasa-ink) !important;
+  color: #fff8df !important;
+  box-shadow: 0 8px 20px rgb(112 87 0 / 22%);
 }
 
 .sikasa-sidebar nav button.is-active > span:first-child {
-  color: var(--sikasa-green) !important;
+  color: var(--sikasa-lime) !important;
 }
 
 .sikasa-sidebar nav button > span:first-child {
-  color: #d1c08b !important;
+  color: #6a5200 !important;
 }
 
 .sikasa-sidebar > div:last-child > div {
-  border-color: rgb(255 245 196 / 14%) !important;
-  background: rgb(255 255 255 / 6%) !important;
+  border-color: rgb(112 87 0 / 18%) !important;
+  background: rgb(255 255 255 / 28%) !important;
 }
 
 .sikasa-sidebar > div:last-child > div > div,
 .sikasa-sidebar > div:last-child > div p {
-  color: #e5dfcb !important;
+  color: #51430d !important;
+}
+
+.sikasa-sidebar > div:last-child > div > div {
+  color: #166534 !important;
+}
+
+.sikasa-sidebar > div:last-child > div > div > span > span:first-child {
+  background-color: #22c55e !important;
+}
+
+.sikasa-sidebar > div:last-child > div > div > span > span:last-child {
+  background-color: #16a34a !important;
 }
 
 .sikasa-sidebar > div:last-child > button {
-  color: #eee9d9;
+  color: #51430d;
 }
 
 .sikasa-sidebar > div:last-child > button:hover {
-  background: rgb(255 255 255 / 8%) !important;
+  background: rgb(255 255 255 / 34%) !important;
 }
 
 .sikasa-sidebar > div:last-child > button > div:first-child {
-  background: #f5cf25 !important;
-  color: #26241d !important;
+  background: var(--sikasa-ink) !important;
+  color: var(--sikasa-lime) !important;
+}
+
+.sikasa-sidebar > div:last-child > button:not([aria-label="Keluar"]) > div:nth-child(2) > div {
+  color: #51430d !important;
 }
 
 .sikasa-sidebar > div:last-child > button[aria-label="Keluar"] {
-  color: #ffd3cb !important;
+  color: #51430d !important;
 }
 
 .sikasa-sidebar > div:last-child > button[aria-label="Keluar"]:hover {
@@ -390,7 +406,8 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-main .animate-page [class*="bg-[#202126]"] {
-  background-color: var(--sikasa-ink) !important;
+  background-color: var(--feb-gold) !important;
+  color: var(--sikasa-ink) !important;
 }
 
 .sikasa-main .animate-page [class*="bg-[#f5cf25]"] {

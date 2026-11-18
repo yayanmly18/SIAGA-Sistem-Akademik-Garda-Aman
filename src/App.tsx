@@ -353,6 +353,7 @@ const roleMeta: Record<UserRole, {
       { label: "Dashboard", icon: "dashboard" },
       { label: "Sesi Ujian", icon: "qrcode" },
       { label: "Log Akses Ujian", icon: "history" },
+      { label: "Log Aktivitas", icon: "history" },
     ],
   },
   admin: {
@@ -2117,6 +2118,7 @@ function TemplatePage({ showToast }: { showToast: (message: string) => void }) {
       title: "Hapus template soal?",
       description: `Template “${template.nama_template}” akan dihapus dan tidak lagi tersedia sebagai acuan dosen. Aksi ini tidak dapat dibatalkan.`,
       confirmLabel: "Hapus template",
+      icon: null,
     })
     if (!confirmed) return
     setDeleting(id)
@@ -2824,8 +2826,8 @@ function LogAksesUjianPage({ showToast }: { showToast: (message: string) => void
   }
   return <><div className="space-y-5">
     <section className="overflow-hidden rounded-2xl border border-amber-200 bg-white">
-      <div className="border-b border-amber-100 p-5"><h2 className="font-display text-lg font-bold">Mahasiswa terkunci — konfirmasi Panitia</h2><p className="mt-1 text-xs text-slate-500">Setelah tiga kali meninggalkan halaman soal, akses dikunci. Konfirmasi mahasiswa secara langsung, lalu minta Admin IT membuka akses.</p></div>
-      {loading ? <TableRowsSkeleton rows={2} /> : locked.length === 0 ? <p className="p-5 text-sm text-slate-400">Tidak ada mahasiswa yang terkunci.</p> : <div className="divide-y divide-slate-100">{locked.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · {student.pelanggaran_count}/3 pelanggaran</div><div className="mt-1 text-xs text-slate-500">Dikunci: {student.access_locked_at ?? "-"}{student.unlock_requested_at ? ` · Permintaan dikirim ${student.unlock_requested_at} oleh ${student.peminta ?? "Panitia"}` : ""}</div>{student.unlock_request_note && <div className="mt-1 text-xs text-amber-800">Catatan: {student.unlock_request_note}</div>}</div>{student.unlock_requested_at ? <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">Menunggu Admin IT</span> : <button className="rounded-lg bg-[#202126] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void requestAdminHelp(student)}>{busyId === student.id ? "Mengirim..." : "Konfirmasi & minta Admin IT"}</button>}</div>)}</div>}
+      <div className="border-b border-amber-100 p-5"><h2 className="font-display text-lg font-bold">Mahasiswa terkunci — konfirmasi Panitia</h2><p className="mt-1 text-xs text-slate-500">Setelah tiga kali meninggalkan halaman soal, akses dikunci. Permintaan ke Admin IT hanya tersedia saat sesi masih aktif.</p></div>
+      {loading ? <TableRowsSkeleton rows={2} /> : locked.length === 0 ? <p className="p-5 text-sm text-slate-400">Tidak ada mahasiswa yang terkunci.</p> : <div className="divide-y divide-slate-100">{locked.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · {student.pelanggaran_count}/3 pelanggaran</div><div className="mt-1 text-xs text-slate-500">Dikunci: {student.access_locked_at ?? "-"}{student.unlock_requested_at ? ` · Permintaan dikirim ${student.unlock_requested_at} oleh ${student.peminta ?? "Panitia"}` : ""}</div>{student.unlock_request_note && <div className="mt-1 text-xs text-amber-800">Catatan: {student.unlock_request_note}</div>}</div>{student.sesi_selesai ? <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">Sesi selesai · permintaan ditutup</span> : student.unlock_requested_at ? <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800">Menunggu Admin IT</span> : student.sesi_aktif ? <button className="rounded-lg bg-[#202126] px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void requestAdminHelp(student)}>{busyId === student.id ? "Mengirim..." : "Konfirmasi & minta Admin IT"}</button> : <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">Permintaan tersedia saat sesi aktif</span>}</div>)}</div>}
     </section>
     <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5 font-display text-lg font-bold">Log Akses Ujian</div>{loading ? <TableRowsSkeleton /> : <div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr><th className="p-4">Mahasiswa</th><th className="p-4">Mata kuliah</th><th className="p-4">Akses pertama</th><th className="p-4">Terakhir</th><th className="p-4">Jumlah</th></tr></thead><tbody>{logs.map((log) => <tr className="border-t" key={log.id}><td className="p-4">{log.nama}<div className="text-xs text-slate-500">NIM {log.nim}</div></td><td className="p-4">{log.mata_kuliah ?? "-"}</td><td className="p-4">{log.akses_pertama_pada}</td><td className="p-4">{log.akses_terakhir_pada}</td><td className="p-4">{log.jumlah_akses}</td></tr>)}{logs.length === 0 && <tr><td className="p-6 text-center text-sm text-slate-400" colSpan={5}>Belum ada akses tercatat.</td></tr>}</tbody></table></div>}</section>
   </div>{dialog}</>
@@ -3309,21 +3311,28 @@ function LogsPage({
   const { logs, currentUser } = useDb()
   const [mengEkspor, setMengEkspor] = useState(false)
   const [filterAktivitas, setFilterAktivitas] = useState("semua")
-  // Hak akses sudah dibatasi oleh API. Di sisi UI, dosen tetap dibatasi lagi
-  // ke aktivitasnya sendiri; log panitia mengikuti data cetak dari endpoint.
+  // Dosen dan panitia hanya melihat aktivitas miliknya sendiri.
   const filtered =
-    role === "dosen"
+    role === "dosen" || role === "panitia"
       ? logs.filter((log) => log.nama === currentUser?.nama)
       : logs
   const byCategory = filtered.filter((log) => {
     const action = log.aksi.toLowerCase()
+    if (filterAktivitas === "sesi") return action.includes("sesi ujian")
+    if (filterAktivitas === "peserta") return action.includes("peserta") || action.includes("roster")
+    if (filterAktivitas === "akses") return action.includes("qr") || action.includes("akses") || action.includes("token")
     if (filterAktivitas === "qr") return action.includes("qr")
     if (filterAktivitas === "upload") return action.includes("upload")
     if (filterAktivitas === "revisi") return action.includes("revisi")
     if (filterAktivitas === "cetak") return action.includes("cetak")
     return true
   })
-  const totalAksesQr = filtered.filter((log) => /qr/i.test(log.aksi)).length
+  const totalAksesQr = filtered.filter((log) =>
+    role === "panitia"
+      ? /sesi|peserta|token/i.test(log.aksi)
+      : /qr/i.test(log.aksi),
+  ).length
+  const totalDitolak = filtered.filter((log) => /ditolak/i.test(log.aksi)).length
   return (
     <>
       <section className="grid gap-4 md:grid-cols-3">
@@ -3335,28 +3344,28 @@ function LogsPage({
           value={String(filtered.length)}
         />
         <StatCard
-          detail="Seluruhnya terverifikasi"
+          detail={role === "panitia" ? "Sesi, peserta, dan token ujian" : "Seluruhnya terverifikasi"}
           icon="qrcode"
-          label="Aktivitas QR"
+          label={role === "panitia" ? "Aktivitas Ujian" : "Aktivitas QR"}
           tone="blue"
           value={String(totalAksesQr)}
         />
         <StatCard
-          detail="Tidak ada anomali"
+          detail={role === "panitia" ? "Akses yang ditolak sistem" : "Tidak ada anomali"}
           icon="shield"
-          label="Insiden Keamanan"
+          label={role === "panitia" ? "Akses Ditolak" : "Insiden Keamanan"}
           tone="green"
-          value="0"
+          value={String(totalDitolak)}
         />
       </section>
       <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
         <div className="flex flex-col gap-4 border-b border-slate-100 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="font-display text-lg font-bold text-slate-900">
-              Jejak Aktivitas Sistem
+              {role === "panitia" ? "Jejak Aktivitas Panitia" : role === "dosen" ? "Jejak Aktivitas Saya" : "Jejak Aktivitas Sistem"}
             </div>
             <p className="mt-1 text-xs text-slate-400">
-              Audit trail tidak dapat diubah atau dihapus
+              {role === "panitia" ? "Riwayat tindakan Anda pada sesi ujian dan peserta" : "Audit trail tidak dapat diubah atau dihapus"}
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-end">
@@ -3365,10 +3374,16 @@ function LogsPage({
               <span className="relative block">
                 <select aria-label="Filter aktivitas log" className="min-h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3.5 pr-10 text-sm font-semibold text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-emerald-700 focus:ring-4 focus:ring-emerald-700/10 sm:min-w-52" value={filterAktivitas} onChange={(event) => setFilterAktivitas(event.target.value)}>
               <option value="semua">Semua aktivitas</option>
-              <option value="qr">Akses QR</option>
-              <option value="upload">Upload</option>
-              <option value="revisi">Revisi</option>
-              <option value="cetak">Cetak</option>
+              {role === "panitia" ? <>
+                <option value="sesi">Sesi ujian</option>
+                <option value="peserta">Daftar peserta</option>
+                <option value="akses">Token & akses</option>
+              </> : <>
+                <option value="qr">Akses QR</option>
+                <option value="upload">Upload</option>
+                <option value="revisi">Revisi</option>
+                <option value="cetak">Cetak</option>
+              </>}
                 </select>
                 <svg aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </span>
@@ -5378,6 +5393,7 @@ function AppShell() {
     ],
     "Sesi Ujian": ["Sesi Ujian Online", "Distribusi soal melalui QR Code"],
     "Log Akses Ujian": ["Log Akses Ujian", "Riwayat akses mahasiswa ke naskah ujian"],
+    "Log Aktivitas": ["Log Aktivitas", "Riwayat aktivitas akun"],
     "Pengawasan Ujian": ["Pengawasan Ujian", "Tinjau permintaan pembukaan akses mahasiswa"],
     "Log & Berita Acara": [
       "Log & Berita Acara",
@@ -5396,10 +5412,13 @@ function AppShell() {
       "Status Server",
       "Pantau layanan tanpa mengakses isi soal",
     ],
-    "Log Aktivitas": ["Log Aktivitas Saya", "Riwayat aktivitas akun dosen"],
     "Log Sistem": ["Log Sistem", "Audit keamanan dan kesehatan layanan"],
   }
-  const currentPage = pageInfo[active] ?? pageInfo.Dashboard
+  const currentPage = active === "Log Aktivitas" && safeRole === "panitia"
+    ? ["Log Aktivitas Panitia", "Riwayat tindakan pada sesi ujian dan peserta"]
+    : active === "Log Aktivitas" && safeRole === "dosen"
+      ? ["Log Aktivitas Saya", "Riwayat aktivitas akun dosen"]
+      : pageInfo[active] ?? pageInfo.Dashboard
 
   // Transisi halus splash -> halaman (crossfade, bukan potongan mendadak):
   // saat sesi selesai dipulihkan, konten halaman dirender lebih dulu di balik
