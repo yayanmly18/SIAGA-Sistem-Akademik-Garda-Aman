@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LogPelanggaranUjian;
 use App\Models\PesertaSesiUjian;
+use App\Services\ActivityLogger;
 use App\Services\NotifikasiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -119,6 +120,31 @@ class AksesDiblokirController extends Controller
         return response()->json(['message' => 'Akses dibuka. Mahasiswa harus verifikasi OTP kembali.']);
     }
 
+    public function hapusPermintaanLama(Request $request, int $pesertaId): JsonResponse
+    {
+        $peserta = PesertaSesiUjian::with('sesi')->findOrFail($pesertaId);
+        if (! $peserta->unlock_requested_at) {
+            return response()->json(['message' => 'Permintaan ini sudah tidak ada.'], 422);
+        }
+        $statusSesi = $peserta->sesi?->statusEfektif();
+        if (! in_array($statusSesi, ['completed', 'cancelled'], true)) {
+            return response()->json(['message' => 'Permintaan hanya dapat dibersihkan setelah sesi ujian berakhir atau dibatalkan.'], 422);
+        }
+
+        $peserta->update([
+            'unlock_requested_at' => null,
+            'unlock_requested_by' => null,
+            'unlock_request_note' => null,
+        ]);
+        ActivityLogger::log('permintaan_buka_akses_dibersihkan', [
+            'peserta_sesi_ujian_id' => $peserta->id,
+            'nama' => $peserta->nama,
+            'nim' => $peserta->nim,
+        ], null, $request->user());
+
+        return response()->json(['message' => 'Permintaan lama dibersihkan. Data peserta dan log audit tetap tersimpan.']);
+    }
+
     private function transform(PesertaSesiUjian $peserta): array
     {
         return [
@@ -134,6 +160,8 @@ class AksesDiblokirController extends Controller
             'unlock_requested_at' => $peserta->unlock_requested_at?->format('Y-m-d H:i:s'),
             'unlock_request_note' => $peserta->unlock_request_note,
             'peminta' => $peserta->pemintaBuka?->nama,
+            'sesi_aktif' => (bool) $peserta->sesi?->bisaDiakses(),
+            'sesi_selesai' => in_array($peserta->sesi?->statusEfektif(), ['completed', 'cancelled'], true),
         ];
     }
 }

@@ -27,6 +27,9 @@ class RevisiController extends Controller
         ]);
 
         $soal = BankSoal::where('user_id', $request->user()->id)->findOrFail($id);
+        if ($soal->isUjianSelesai()) {
+            return response()->json(['message' => 'Ujian sudah selesai. Revisi tidak dapat diajukan.'], 422);
+        }
         if (! in_array($soal->status, ['terkunci', 'siap_ujian', 'ditolak'], true)) {
             return response()->json(['message' => 'Revisi hanya dapat diajukan untuk soal yang sudah dikunci atau disetujui dan belum diarsipkan.'], 422);
         }

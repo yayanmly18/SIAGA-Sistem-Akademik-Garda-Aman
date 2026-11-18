@@ -106,6 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin_it')->group(function () {
         Route::get('/permintaan-buka-akses', [AksesDiblokirController::class, 'permintaanAdmin']);
         Route::post('/permintaan-buka-akses/{pesertaId}/buka', [AksesDiblokirController::class, 'bukaAkses']);
+        Route::delete('/permintaan-buka-akses/{pesertaId}', [AksesDiblokirController::class, 'hapusPermintaanLama']);
         Route::get('/printers', [PrinterController::class, 'index']);
         Route::get('/printers/scan', [PrinterController::class, 'scan']);
         Route::post('/printers', [PrinterController::class, 'store']);

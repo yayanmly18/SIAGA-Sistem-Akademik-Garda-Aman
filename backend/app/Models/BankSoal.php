@@ -31,6 +31,16 @@ class BankSoal extends Model
         'qr_code_path',
         'template_soal_id',
         'catatan_persetujuan',
+        'approved_by',
+        'approval_name',
+        'approval_signature_path',
+        'signature_page',
+        'signature_x',
+        'signature_y',
+        'signature_width',
+        'signature_height',
+        'signature_name_y',
+        'approved_at',
         'dikunci_pada',
         'arsip_pada',
     ];
@@ -40,9 +50,16 @@ class BankSoal extends Model
         'waktu_mulai_ujian' => 'datetime',
         'waktu_selesai_ujian' => 'datetime',
         'dikunci_pada' => 'datetime',
+        'approved_at' => 'datetime',
         'arsip_pada' => 'datetime',
         'jumlah_mahasiswa' => 'integer',
         'durasi_menit' => 'integer',
+        'signature_page' => 'integer',
+        'signature_x' => 'float',
+        'signature_y' => 'float',
+        'signature_width' => 'float',
+        'signature_height' => 'float',
+        'signature_name_y' => 'float',
     ];
 
     public function dosen(): BelongsTo
@@ -91,7 +108,17 @@ class BankSoal extends Model
 
     public function isUjianSelesai(): bool
     {
-        return $this->status === 'selesai' || $this->status === 'arsip';
+        if ($this->status === 'selesai' || $this->status === 'arsip') {
+            return true;
+        }
+
+        return $this->sesiUjian()->where(function ($query) {
+            $query->whereIn('status', ['completed', 'selesai'])
+                ->orWhere(function ($scheduled) {
+                    $scheduled->whereIn('status', ['draft', 'scheduled', 'active', 'suspended'])
+                        ->where('waktu_selesai', '<=', now());
+                });
+        })->exists();
     }
 
     public function generateQrToken(): string

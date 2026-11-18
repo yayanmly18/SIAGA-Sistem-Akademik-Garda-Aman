@@ -71,10 +71,13 @@ class UjianOnlineController extends Controller
         $this->limiter->hit($rateKey, 300);
 
         $peserta = PesertaSesiUjian::where('sesi_ujian_id', $sesi->id)->where('nim', $nim)->first();
-        if ($peserta?->access_locked_at) {
+        if (! $peserta) {
+            return response()->json(['message' => 'NIM tidak terdaftar pada sesi ini. Masukkan NIM yang terdaftar di roster atau hubungi Panitia.'], 422);
+        }
+        if ($peserta->access_locked_at) {
             return response()->json(['message' => 'Akses soal dikunci setelah tiga kali meninggalkan halaman. Hubungi Panitia untuk meminta pemeriksaan.'], 423);
         }
-        if ($peserta && $peserta->otp_attempts < 5) {
+        if ($peserta->otp_attempts < 5) {
             $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $peserta->update([
                 'otp_hash' => hash_hmac('sha256', $otp, (string) config('app.key')),
@@ -94,8 +97,7 @@ class UjianOnlineController extends Controller
             }
         }
 
-        // Respons yang sama untuk NIM terdaftar dan tidak terdaftar mencegah enumerasi roster.
-        return response()->json(['message' => 'Jika NIM terdaftar pada sesi ini, kode verifikasi akan dikirim ke email kampus yang terdaftar.'], 202);
+        return response()->json(['message' => 'Kode verifikasi dikirim ke email kampus yang terdaftar pada roster sesi.'], 202);
     }
 
     public function verifyOtp(Request $request, string $token): JsonResponse

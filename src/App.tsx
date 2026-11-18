@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react"
 import QRCode from "qrcode"
+import { detectPdfSignatureLayout, type PdfSignatureLayout } from "./pdfSignatureAnchor"
 import { enableNotificationSounds, playNotificationSound } from "./notificationSound"
 const StudentAccess = lazy(() => import("./StudentAccess"))
 import {
@@ -43,6 +44,7 @@ import {
   mintaBukaAksesPeserta,
   fetchPermintaanBukaAkses,
   bukaAksesPeserta,
+  hapusPermintaanLama,
   fetchSesiUjian,
   fetchSoalDisetujui,
   previewSoalPersetujuan,
@@ -414,7 +416,7 @@ interface DbContextValue {
     file: File,
   ) => Promise<string>
   refresh: () => Promise<void>
-  updateProfile: (input: { nama: string; currentPassword?: string; newPassword?: string; photo?: File }) => Promise<void>
+  updateProfile: (input: { nama: string; currentPassword?: string; newPassword?: string; photo?: File; signature?: File }) => Promise<void>
 }
 
 const DbContext = createContext<DbContextValue | null>(null)
@@ -1013,9 +1015,9 @@ const loginSlides: {
     detail:
       "Setiap unggah, revisi, persetujuan, dan akses soal tercatat beserta waktunya.",
     ikon: "history",
-    aksen: "#37d6b3",
+    aksen: "#f5cf25",
     gradasi:
-      "radial-gradient(120% 85% at 50% 118%, rgba(55,214,179,0.22) 0%, rgba(55,214,179,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(55,214,179,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #161c1b 0%, #12211f 48%, #101615 100%)",
+      "radial-gradient(120% 85% at 50% 118%, rgba(245,207,37,0.22) 0%, rgba(245,207,37,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(245,207,37,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #202126 0%, #26272d 48%, #1a1b1e 100%)",
   },
   {
     tag: "Nilai 03",
@@ -1023,9 +1025,9 @@ const loginSlides: {
     detail:
       "Soal dibuka dari QR sesuai jadwal ujian dan akses mahasiswa tercatat.",
     ikon: "qrcode",
-    aksen: "#6aa8ff",
+    aksen: "#f5cf25",
     gradasi:
-      "radial-gradient(120% 85% at 50% 118%, rgba(106,168,255,0.22) 0%, rgba(106,168,255,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(106,168,255,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #14171f 0%, #141a26 48%, #101319 100%)",
+      "radial-gradient(120% 85% at 50% 118%, rgba(245,207,37,0.22) 0%, rgba(245,207,37,0.07) 45%, rgba(32,33,38,0) 74%), radial-gradient(60% 50% at 82% 8%, rgba(245,207,37,0.16), rgba(32,33,38,0) 62%), linear-gradient(180deg, #202126 0%, #26272d 48%, #1a1b1e 100%)",
   },
 ]
 
@@ -1246,7 +1248,7 @@ function LoginPage({
     )
   }
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#e8e9e9] p-4 sm:p-6 lg:h-screen lg:overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center bg-[#fbf9f0] p-4 sm:p-6 lg:h-screen lg:overflow-hidden">
       <div className="flex w-full max-w-5xl overflow-hidden rounded-[34px] bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] lg:h-[calc(100vh-3rem)]">
         <div className="grid flex-1 lg:grid-cols-[0.92fr_1.08fr]">
           {/* ---------------------------------------------------------- */}
@@ -1889,6 +1891,9 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
     downloadTemplate,
   } = useDb()
   const [file, setFile] = useState<File | null>(null)
+  const [signatureLayout, setSignatureLayout] = useState<PdfSignatureLayout | null>(null)
+  const [layoutStatus, setLayoutStatus] = useState<"idle" | "checking" | "detected" | "missing">("idle")
+  const layoutDetectionId = useRef(0)
   const [judul, setJudul] = useState("")
   const [busy, setBusy] = useState(false)
   const [konfirmasiFinal, setKonfirmasiFinal] = useState(false)
@@ -2017,8 +2022,25 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
             accept=".pdf"
             className="hidden"
             onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null)
+              const selectedFile = event.target.files?.[0] ?? null
+              const detectionId = ++layoutDetectionId.current
+              event.currentTarget.value = ""
+              setFile(selectedFile)
+              setSignatureLayout(null)
+              setLayoutStatus(selectedFile ? "checking" : "idle")
               setKonfirmasiFinal(false)
+              if (selectedFile) {
+                void detectPdfSignatureLayout(selectedFile)
+                  .then((layout) => {
+                    if (detectionId !== layoutDetectionId.current) return
+                    setSignatureLayout(layout)
+                    setLayoutStatus(layout ? "detected" : "missing")
+                  })
+                  .catch(() => {
+                    if (detectionId !== layoutDetectionId.current) return
+                    setLayoutStatus("missing")
+                  })
+              }
             }}
             type="file"
           />
@@ -2033,6 +2055,9 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
           </div>
         </label>
         {busy ? <UploadProgress label="Mengunggah dan mengamankan soal..." /> : file && <p className="mt-2 text-xs font-medium text-emerald-700" role="status">Berkas siap diunggah.</p>}
+        {layoutStatus === "checking" && <p role="status" className="mt-2 text-xs font-medium text-slate-500">Memeriksa posisi kotak tanda tangan pada PDF...</p>}
+        {layoutStatus === "detected" && signatureLayout && <p role="status" className="mt-2 text-xs font-semibold text-emerald-700">Kotak Kaprodi terdeteksi di halaman {signatureLayout.page}. Posisi tanda tangan akan mengikuti tata letak PDF ini.</p>}
+        {layoutStatus === "missing" && <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">Kotak Kaprodi tidak terdeteksi. Gunakan PDF yang memuat tabel dengan label “Dosen” dan “Kaprodi” agar tanda tangan dapat ditempatkan tepat.</p>}
         <label className="mt-5 flex items-start gap-3 rounded-xl bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
           <input
             className="mt-0.5"
@@ -2051,9 +2076,10 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
         )}
         <button
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#202126] py-3.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={busy || !konfirmasiFinal}
+          disabled={busy || !konfirmasiFinal || (!!file && layoutStatus !== "detected")}
           onClick={async () => {
             if (!file) return showToast("Pilih berkas PDF terlebih dahulu.")
+            if (!signatureLayout) return showToast("Kotak tanda tangan Kaprodi belum terdeteksi pada PDF.")
             if (!judul.trim()) return showToast("Judul soal wajib diisi.")
             setBusy(true)
             try {
@@ -2065,8 +2091,11 @@ function UploadPage({ showToast }: { showToast: (message: string) => void }) {
                 jumlahMahasiswa: jumlah,
                 templateSoalId,
                 file,
+                signatureLayout,
               })
               setFile(null)
+              setSignatureLayout(null)
+              setLayoutStatus("idle")
               setJudul("")
               setKonfirmasiFinal(false)
               showToast("Soal terenkripsi dan menunggu persetujuan Kaprodi.")
@@ -3019,7 +3048,15 @@ function PengawasanUjianPage({ showToast }: { showToast: (message: string) => vo
     catch (error) { showToast(error instanceof Error ? error.message : "Akses gagal dibuka.") }
     finally { setBusyId(null) }
   }
-  return <><section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5"><h2 className="font-display text-lg font-bold">Permintaan pembukaan akses ujian</h2><p className="mt-1 text-xs text-slate-500">Tinjau permintaan Panitia setelah konfirmasi langsung dengan mahasiswa.</p></div>{loading ? <TableRowsSkeleton rows={3} /> : requests.length === 0 ? <p className="p-5 text-sm text-slate-400">Belum ada permintaan bantuan dari Panitia.</p> : <div className="divide-y divide-slate-100">{requests.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · Pelanggaran {student.pelanggaran_count}/3</div><div className="mt-1 text-xs text-slate-500">Permintaan {student.unlock_requested_at} oleh {student.peminta ?? "Panitia"}</div><div className="mt-1 text-xs text-amber-800">Konfirmasi Panitia: {student.unlock_request_note}</div></div><button className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void unlock(student)}>{busyId === student.id ? "Membuka..." : "Buka akses mahasiswa"}</button></div>)}</div>}</section>{dialog}</>
+  const clearOldRequest = async (student: PesertaTerkunci) => {
+    const confirmed = window.confirm(`Bersihkan permintaan lama untuk ${student.nama} (NIM ${student.nim})? Data peserta dan log audit tetap tersimpan.`)
+    if (!confirmed) return
+    setBusyId(student.id)
+    try { showToast(await hapusPermintaanLama(student.id)); await refresh() }
+    catch (error) { showToast(error instanceof Error ? error.message : "Permintaan lama gagal dibersihkan.") }
+    finally { setBusyId(null) }
+  }
+  return <><section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white"><div className="border-b p-5"><h2 className="font-display text-lg font-bold">Permintaan pembukaan akses ujian</h2><p className="mt-1 text-xs text-slate-500">Tinjau permintaan Panitia setelah konfirmasi langsung dengan mahasiswa. Permintaan dari sesi yang berakhir bisa dibersihkan dari daftar.</p></div>{loading ? <TableRowsSkeleton rows={3} /> : requests.length === 0 ? <p className="p-5 text-sm text-slate-400">Belum ada permintaan bantuan dari Panitia.</p> : <div className="divide-y divide-slate-100">{requests.map((student) => <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={student.id}><div><div className="font-semibold text-slate-800">{student.nama} · NIM {student.nim}</div><div className="mt-1 text-xs text-slate-500">{student.mata_kuliah ?? student.nama_ujian ?? "Sesi ujian"} · Kelas {student.kelas ?? "-"} · Pelanggaran {student.pelanggaran_count}/3</div><div className="mt-1 text-xs text-slate-500">Permintaan {student.unlock_requested_at} oleh {student.peminta ?? "Panitia"}</div><div className="mt-1 text-xs text-amber-800">Konfirmasi Panitia: {student.unlock_request_note}</div></div>{student.sesi_aktif ? <button className="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white disabled:opacity-50" disabled={busyId === student.id} onClick={() => void unlock(student)}>{busyId === student.id ? "Membuka..." : "Buka akses mahasiswa"}</button> : student.sesi_selesai ? <button className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-700 hover:bg-rose-100 disabled:opacity-50" disabled={busyId === student.id} onClick={() => void clearOldRequest(student)}>{busyId === student.id ? "Membersihkan..." : "Hapus permintaan lama"}</button> : <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-500">Sesi belum aktif</span>}</div>)}</div>}</section>{dialog}</>
 }
 // (yang selalu tersedia untuk peran Kaprodi — db.bank_soal memang tidak
 // dimuat untuk peran ini). Bersifat read-only.
@@ -3178,6 +3215,7 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
     dosen: r.dosen ?? "-",
     nama_mk: r.nama_mk,
     jadwal: r.jadwal_ujian ? formatTanggal(r.jadwal_ujian) : "-",
+    jadwalTimestamp: r.jadwal_ujian ? new Date(r.jadwal_ujian).getTime() : Number.NaN,
     status: ({ terkunci: "Menunggu persetujuan", ditolak: "Ditolak", siap_ujian: "Disetujui", dibuka: "Disetujui", selesai: "Selesai", arsip: "Arsip" } as Record<string, string>)[r.status] ?? (r.status === "belum_upload" ? "Belum upload" : r.status),
     done: r.status !== "belum_upload",
 
@@ -3187,7 +3225,14 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
     // Simpan baris rekap asli agar modal detail bisa dibangun dari sini
     // (db.bank_soal kosong untuk Kaprodi, jadi jangan bergantung padanya).
     src: r,
-  }))
+  })).sort((a, b) => {
+    const aHasSchedule = Number.isFinite(a.jadwalTimestamp)
+    const bHasSchedule = Number.isFinite(b.jadwalTimestamp)
+    if (!aHasSchedule && !bHasSchedule) return 0
+    if (!aHasSchedule) return 1
+    if (!bHasSchedule) return -1
+    return b.jadwalTimestamp - a.jadwalTimestamp
+  })
   return (
     <>
       <section className="grid gap-4 sm:grid-cols-3">
@@ -3267,13 +3312,21 @@ function RecapPage({ showToast }: { showToast: (message: string) => void }) {
             <tbody>
               {rows.map((row) => {
                 const done = row.done
+                const jadwalLewat = Number.isFinite(row.jadwalTimestamp) && row.jadwalTimestamp < Date.now()
                 return (
-                  <tr className="border-t border-slate-100" key={row.nama_mk}>
+                  <tr className={`border-t border-slate-100 ${jadwalLewat ? "bg-rose-50/40" : ""}`} key={row.src.bank_soal_id ?? `belum-${row.src.mk_id}`}>
                     <td className="px-6 py-4 font-semibold text-slate-700">
                       {row.dosen}
                     </td>
                     <td className="px-4 py-4 text-slate-600">{row.nama_mk}</td>
-                    <td className="px-4 py-4 text-slate-500">{row.jadwal}</td>
+                    <td className={`px-4 py-4 ${jadwalLewat ? "text-rose-700" : "text-slate-500"}`}>
+                      <div>{row.jadwal}</div>
+                      {jadwalLewat && (
+                        <span className="mt-1 inline-flex rounded-full border border-rose-200 bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800">
+                          Jadwal lewat
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-4">
                       <span
                         className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
@@ -4226,7 +4279,10 @@ function MyQuestionsPage({
     name: s.nama_mk,
     meta: `${s.kode_mk} · Kelas ${s.kelas}`,
     type: s.jenis,
-    state:
+    ujianSelesai: Boolean(s.ujian_selesai) || s.status === "arsip",
+    state: Boolean(s.ujian_selesai) || s.status === "arsip"
+      ? "Ujian selesai"
+      :
       s.status === "siap_ujian"
         ? "Disetujui"
         : s.status === "ditolak"
@@ -4234,7 +4290,7 @@ function MyQuestionsPage({
         : s.status === "arsip"
           ? "Diarsipkan"
           : "Menunggu persetujuan",
-    isTerkunci: s.status === "terkunci" || s.status === "ditolak" || s.status === "siap_ujian",
+    isTerkunci: !s.ujian_selesai && (s.status === "terkunci" || s.status === "ditolak" || s.status === "siap_ujian"),
     date: formatTanggal(s.jadwal_ujian),
     id: s.id,
   }))
@@ -4297,28 +4353,34 @@ function MyQuestionsPage({
               <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
                 <span
                   className={`flex items-center gap-1.5 text-xs font-bold ${
-                    q.isTerkunci ? "text-emerald-700" : "text-amber-700"
+                    q.ujianSelesai ? "text-slate-600" : q.isTerkunci ? "text-emerald-700" : "text-amber-700"
                   }`}
                 >
-                  <Icon name={q.isTerkunci ? "lock" : "clock"} size={14} />
+                  <Icon name={q.ujianSelesai ? "check" : q.isTerkunci ? "lock" : "clock"} size={14} />
                   {q.state}
                 </span>
-                <button
-                  className="text-xs font-bold text-emerald-700"
-                  onClick={() => {
-                    const target = soal.find((s) => s.id === q.id)
-                    if (!target) return
-                    if (q.isTerkunci) {
-                      setRevisiFor(target)
-                      setAlasanRevisi("")
-                      setFileRevisi(null)
-                    } else {
-                      showToast("Detail mata kuliah dibuka.")
-                    }
-                  }}
-                >
-                  {q.isTerkunci ? "Ajukan revisi" : "Lihat detail"}
-                </button>
+                {q.ujianSelesai ? (
+                  <span className="text-right text-[11px] font-medium text-slate-500">
+                    Revisi tidak tersedia setelah ujian selesai
+                  </span>
+                ) : (
+                  <button
+                    className="text-xs font-bold text-emerald-700"
+                    onClick={() => {
+                      const target = soal.find((s) => s.id === q.id)
+                      if (!target) return
+                      if (q.isTerkunci) {
+                        setRevisiFor(target)
+                        setAlasanRevisi("")
+                        setFileRevisi(null)
+                      } else {
+                        showToast("Detail mata kuliah dibuka.")
+                      }
+                    }}
+                  >
+                    {q.isTerkunci ? "Ajukan revisi" : "Lihat detail"}
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -5375,6 +5437,7 @@ function AppShell() {
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [profilePhoto, setProfilePhoto] = useState<File>()
+  const [profileSignature, setProfileSignature] = useState<File>()
   const [profileSaving, setProfileSaving] = useState(false)
   const [clockNow, setClockNow] = useState(() => new Date())
   const [notifOpen, setNotifOpen] = useState(false)
@@ -5592,7 +5655,7 @@ function AppShell() {
           void logout()
         }}
         onNavigate={setActive}
-        onProfile={() => { setProfileName(currentUser?.nama ?? ""); setCurrentPassword(""); setNewPassword(""); setProfilePhoto(undefined); setProfileOpen(true) }}
+        onProfile={() => { setProfileName(currentUser?.nama ?? ""); setCurrentPassword(""); setNewPassword(""); setProfilePhoto(undefined); setProfileSignature(undefined); setProfileOpen(true) }}
         photoUrl={currentUser?.photoUrl}
         open={sidebarOpen}
         role={safeRole}
@@ -5757,7 +5820,7 @@ function AppShell() {
             {helpOpen && (
         <HelpPanel role={safeRole} onClose={() => setHelpOpen(false)} />
       )}
-      {profileOpen && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setProfileOpen(false) }}><section role="dialog" aria-modal="true" aria-labelledby="profile-title" className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 id="profile-title" className="text-xl font-bold text-slate-900">Profil saya</h2><p className="mt-1 text-sm text-slate-500">Perbarui foto, nama, atau kata sandi akun.</p></div><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Tutup" onClick={() => setProfileOpen(false)}>✕</button></div><form className="mt-5 grid gap-4" onSubmit={async (event) => { event.preventDefault(); setProfileSaving(true); try { await updateProfile({ nama: profileName.trim(), currentPassword: currentPassword || undefined, newPassword: newPassword || undefined, photo: profilePhoto }); setProfileOpen(false); setToast("Profil berhasil diperbarui.") } catch (error) { setToast(error instanceof Error ? error.message : "Profil gagal diperbarui.") } finally { setProfileSaving(false) } }}><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Foto profil<span className="relative flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50/50"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm"><Icon name={profilePhoto ? "check" : "upload"} size={18} /></span><span className="min-w-0 flex-1 truncate">{profilePhoto?.name || "Pilih foto profil"}<small className="block text-xs font-normal text-slate-400">JPG, PNG, atau WebP · Maks. 3 MB</small></span><input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file && file.size > 3 * 1024 * 1024) { setToast("Ukuran foto maksimal 3 MB."); event.target.value = ""; return } setProfilePhoto(file) }} className="absolute inset-0 cursor-pointer opacity-0" /></span></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Nama<input required maxLength={150} value={profileName} onChange={(event) => setProfileName(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><div className="border-t border-slate-100 pt-4 text-sm font-bold text-slate-800">Ganti kata sandi</div><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi saat ini<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi baru (min. 8 karakter)<input type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><p className="text-xs text-slate-500">Isi kedua kolom kata sandi hanya jika ingin menggantinya.</p><div className="flex justify-end gap-2"><button type="button" className="rounded-xl border px-4 py-2.5 text-sm font-semibold" onClick={() => setProfileOpen(false)}>Batal</button><button disabled={profileSaving} className="rounded-xl bg-[#202126] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">{profileSaving ? "Menyimpan..." : "Simpan perubahan"}</button></div></form></section></div>}
+      {profileOpen && <div className="fixed inset-0 z-[70] grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setProfileOpen(false) }}><section role="dialog" aria-modal="true" aria-labelledby="profile-title" className="flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white p-6 shadow-2xl"><div className="flex items-start justify-between"><div><h2 id="profile-title" className="text-xl font-bold text-slate-900">Profil saya</h2><p className="mt-1 text-sm text-slate-500">Perbarui foto, nama, tanda tangan, atau kata sandi akun.</p></div><button className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Tutup" onClick={() => setProfileOpen(false)}>✕</button></div><form className="mt-5 flex min-h-0 flex-1 flex-col gap-4" onSubmit={async (event) => { event.preventDefault(); setProfileSaving(true); try { await updateProfile({ nama: profileName.trim(), currentPassword: currentPassword || undefined, newPassword: newPassword || undefined, photo: profilePhoto, signature: profileSignature }); setProfileOpen(false); setToast("Profil berhasil diperbarui.") } catch (error) { setToast(error instanceof Error ? error.message : "Profil gagal diperbarui.") } finally { setProfileSaving(false) } }}><div className="grid min-h-0 gap-4 overflow-y-auto overscroll-contain pr-1"><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Foto profil<span className="relative flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600 transition hover:border-emerald-500 hover:bg-emerald-50/50"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm"><Icon name={profilePhoto ? "check" : "upload"} size={18} /></span><span className="min-w-0 flex-1 truncate">{profilePhoto?.name || "Pilih foto profil"}<small className="block text-xs font-normal text-slate-400">JPG, PNG, atau WebP · Maks. 3 MB</small></span><input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file && file.size > 3 * 1024 * 1024) { setToast("Ukuran foto maksimal 3 MB."); event.target.value = ""; return } setProfilePhoto(file) }} className="absolute inset-0 cursor-pointer opacity-0" /></span></label>{safeRole === "kaprodi" && <label className="grid gap-1.5 text-sm font-semibold text-slate-700">Tanda tangan persetujuan<span className="relative flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600"><span className="grid size-9 shrink-0 place-items-center rounded-lg bg-white text-emerald-700 shadow-sm"><Icon name={profileSignature ? "check" : "upload"} size={18} /></span><span className="min-w-0 flex-1 truncate">{profileSignature?.name || (currentUser?.hasSignature ? "Tanda tangan tersimpan · pilih untuk mengganti" : "Pilih gambar tanda tangan")}<small className="block text-xs font-normal text-slate-400">PNG atau JPG · Maks. 2 MB</small></span><input type="file" accept="image/png,image/jpeg" onChange={(event) => { const file = event.target.files?.[0]; if (file && file.size > 2 * 1024 * 1024) { setToast("Ukuran tanda tangan maksimal 2 MB."); event.target.value = ""; return } setProfileSignature(file) }} className="absolute inset-0 cursor-pointer opacity-0" /></span><small className="font-normal text-slate-500">Tanda tangan ini disalin ke setiap persetujuan baru.</small></label>}<label className="grid gap-1.5 text-sm font-semibold text-slate-700">Nama<input required maxLength={150} value={profileName} onChange={(event) => setProfileName(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><div className="border-t border-slate-100 pt-4 text-sm font-bold text-slate-800">Ganti kata sandi</div><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi saat ini<input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><label className="grid gap-1.5 text-sm font-semibold text-slate-700">Kata sandi baru (min. 8 karakter)<input type="password" minLength={8} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className="rounded-xl border border-slate-200 px-3 py-2.5 font-normal" /></label><p className="text-xs text-slate-500">Isi kedua kolom kata sandi hanya jika ingin menggantinya.</p></div><div className="flex justify-end gap-2 border-t border-slate-100 bg-white pt-3"><button type="button" className="min-h-11 rounded-xl border px-4 py-2.5 text-sm font-semibold" onClick={() => setProfileOpen(false)}>Batal</button><button disabled={profileSaving} className="min-h-11 rounded-xl bg-[#202126] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-60">{profileSaving ? "Menyimpan..." : "Simpan perubahan"}</button></div></form></section></div>}
       {toast && (
         <div role="status" className="fixed bottom-6 right-6 z-[60] flex max-w-sm items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-xs font-semibold text-white shadow-2xl">
           <span className="grid size-6 place-items-center rounded-full bg-emerald-500">

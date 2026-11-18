@@ -38,7 +38,7 @@
   }
 
   :focus-visible {
-    outline: 3px solid #f5cf25;
+    outline: 3px solid #8a6900;
     outline-offset: 3px;
   }
 }
@@ -101,27 +101,29 @@
   animation: page-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
-/* Tema workspace SIKASA: arsip akademik modern dengan warna hijau tinta dan
-   aksen lime. Seluruh aturan berada di dalam shell setelah login; LoginPage
-   tetap memakai tampilan lamanya. */
+/* Tema workspace SIKASA: identitas FEB dengan emas, charcoal, dan warm white. */
 .sikasa-workspace {
-  --sikasa-ink: #173a35;
-  --sikasa-ink-soft: #244b45;
-  --sikasa-green: #14766a;
-  --sikasa-lime: #d9ef83;
-  --sikasa-canvas: #f2f6f3;
-  --sikasa-line: #dce7e1;
-  --sikasa-muted: #64766f;
+  --sikasa-ink: #26241d;
+  --sikasa-ink-soft: #393529;
+  --sikasa-green: #806100;
+  --sikasa-lime: #f5cf25;
+  --sikasa-canvas: #fbf9f0;
+  --sikasa-line: #e9e1c4;
+  --sikasa-muted: #706b5d;
+  --feb-gold: #f2c400;
+  --feb-gold-soft: #fff7d6;
+  --feb-gold-line: #ead88a;
+  --feb-gold-text: #705700;
   background: var(--sikasa-canvas) !important;
-  color: #1b302b;
+  color: #29271f;
 }
 
 .sikasa-sidebar {
   width: 18rem !important;
-  border-color: #294a44 !important;
-  background: linear-gradient(180deg, #173a35 0%, #102d29 100%) !important;
-  color: #f2f7f4 !important;
-  box-shadow: 12px 0 36px rgb(22 57 51 / 8%);
+  border-color: #403b2d !important;
+  background: linear-gradient(180deg, #29271f 0%, #1d1b16 100%) !important;
+  color: #fbf8ed !important;
+  box-shadow: 12px 0 36px rgb(56 45 10 / 10%);
 }
 
 /* Scrollbar dokumen dan daftar menu dibuat tipis agar tidak tampak seperti
@@ -172,7 +174,7 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar-thumb:hover {
-  background: #d9ef83;
+  background: #f5cf25;
 }
 
 .sikasa-sidebar-brand {
@@ -187,7 +189,7 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 
 .sikasa-sidebar-brand .font-display,
 .sikasa-sidebar-brand [class*="tracking-[0.2em]"] {
-  color: #f2f7f4 !important;
+  color: #fbf8ed !important;
 }
 
 .sikasa-sidebar-brand > div:first-child .font-display {
@@ -201,12 +203,12 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .sikasa-institution {
   max-width: 190px;
   overflow-wrap: anywhere;
-  color: #b6cbc0 !important;
+  color: #c8c0a3 !important;
 }
 
 .sikasa-sidebar > div:nth-child(2) > div:first-child,
 .sikasa-sidebar > div:nth-child(2) nav button {
-  color: #c3d3cc !important;
+  color: #d1cbb8 !important;
 }
 
 .sikasa-sidebar > div:nth-child(2) nav button.is-active {
@@ -225,13 +227,13 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-sidebar nav button:hover {
-  border-color: rgb(224 240 232 / 12%);
+  border-color: rgb(255 245 196 / 18%);
   background: rgb(255 255 255 / 8%) !important;
   color: #fff !important;
 }
 
 .sikasa-sidebar nav button.is-active {
-  border-color: rgb(217 239 131 / 28%);
+  border-color: rgb(245 207 37 / 42%);
   background: var(--sikasa-lime) !important;
   color: var(--sikasa-ink) !important;
   box-shadow: 0 8px 20px rgb(8 30 26 / 16%);
@@ -242,21 +244,21 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-sidebar nav button > span:first-child {
-  color: #a6c0b4 !important;
+  color: #d1c08b !important;
 }
 
 .sikasa-sidebar > div:last-child > div {
-  border-color: rgb(229 244 235 / 12%) !important;
+  border-color: rgb(255 245 196 / 14%) !important;
   background: rgb(255 255 255 / 6%) !important;
 }
 
 .sikasa-sidebar > div:last-child > div > div,
 .sikasa-sidebar > div:last-child > div p {
-  color: #d4e2dc !important;
+  color: #e5dfcb !important;
 }
 
 .sikasa-sidebar > div:last-child > button {
-  color: #e5eee9;
+  color: #eee9d9;
 }
 
 .sikasa-sidebar > div:last-child > button:hover {
@@ -264,8 +266,8 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-sidebar > div:last-child > button > div:first-child {
-  background: #d9ef83 !important;
-  color: #173a35 !important;
+  background: #f5cf25 !important;
+  color: #26241d !important;
 }
 
 .sikasa-sidebar > div:last-child > button[aria-label="Keluar"] {
@@ -279,16 +281,16 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .sikasa-main {
   margin-left: 18rem !important;
   background:
-    radial-gradient(ellipse at 95% 0%, rgb(216 238 222 / 52%), transparent 28rem),
+    radial-gradient(ellipse at 95% 0%, rgb(245 207 37 / 15%), transparent 28rem),
     var(--sikasa-canvas) !important;
-  color: #1b302b;
+  color: #29271f;
 }
 
 .sikasa-topbar {
   min-height: 5.5rem;
   border-color: var(--sikasa-line) !important;
-  background: rgb(250 252 250 / 92%) !important;
-  box-shadow: 0 8px 24px rgb(28 61 51 / 4%);
+  background: rgb(255 254 249 / 94%) !important;
+  box-shadow: 0 8px 24px rgb(89 71 10 / 5%);
 }
 
 .sikasa-topbar > div:first-of-type > div:first-child {
@@ -313,7 +315,7 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .sikasa-topbar button,
 .sikasa-topbar > div > div[class*="rounded-full"] {
   border: 1px solid var(--sikasa-line);
-  box-shadow: 0 2px 8px rgb(31 64 54 / 4%);
+  box-shadow: 0 2px 8px rgb(89 71 10 / 5%);
 }
 
 .sikasa-topbar > div:last-child > div[class*="bg-[#202126]"] {
@@ -327,18 +329,18 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
   border-color: var(--sikasa-line) !important;
   border-radius: 16px !important;
   background: #fff !important;
-  box-shadow: 0 20px 50px rgb(19 58 49 / 16%) !important;
+  box-shadow: 0 20px 50px rgb(51 43 15 / 16%) !important;
   transform-origin: top right;
   animation: dropdown-enter 150ms ease-out both;
 }
 
 .sikasa-dropdown-panel > div:first-child {
   border-color: var(--sikasa-line) !important;
-  background: #f7faf7;
+  background: #fffcf1;
 }
 
 .sikasa-dropdown-panel button:hover {
-  background-color: #f1f7f2 !important;
+  background-color: #fff8dd !important;
 }
 
 @keyframes dropdown-enter {
@@ -369,7 +371,7 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .sikasa-main .animate-page [class*="rounded-xl"][class*="bg-white"][class*="border"],
 .sikasa-main .animate-page [class*="rounded-[2rem]"][class*="bg-white"] {
   border-color: var(--sikasa-line) !important;
-  box-shadow: 0 12px 32px rgb(25 60 49 / 5%);
+  box-shadow: 0 12px 32px rgb(89 71 10 / 5%);
 }
 
 .sikasa-main .animate-page [class*="bg-[#202126]"] {
@@ -384,16 +386,16 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .sikasa-main .animate-page select,
 .sikasa-main .animate-page textarea {
   min-height: 44px;
-  border-color: #d6e2db !important;
+  border-color: #e5dcc0 !important;
   border-radius: 12px !important;
   background-color: #fff !important;
-  color: #203b34 !important;
+  color: #29271f !important;
 }
 
 .sikasa-main .animate-page select {
   appearance: none;
   padding-right: 2.75rem !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2314766a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23705700' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") !important;
   background-position: right 0.75rem center !important;
   background-repeat: no-repeat !important;
   background-size: 1rem !important;
@@ -402,7 +404,7 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 
 .sikasa-main .animate-page select option {
   background: #fff;
-  color: #203b34;
+  color: #29271f;
 }
 
 .sikasa-main .animate-page select:disabled {
@@ -413,8 +415,8 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .sikasa-main .animate-page input:focus,
 .sikasa-main .animate-page select:focus,
 .sikasa-main .animate-page textarea:focus {
-  border-color: #398c78 !important;
-  box-shadow: 0 0 0 3px rgb(57 140 120 / 15%);
+  border-color: #9a7600 !important;
+  box-shadow: 0 0 0 3px rgb(242 196 0 / 22%);
 }
 
 .sikasa-main .animate-page table {
@@ -424,18 +426,18 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-main .animate-page thead th {
-  background: #f1f6f2;
-  color: #45645a;
+  background: #fff8dd;
+  color: #61511a;
   font-weight: 700;
 }
 
 .sikasa-main .animate-page th,
 .sikasa-main .animate-page td {
-  border-color: #e3ebe6 !important;
+  border-color: #eee6cd !important;
 }
 
 .sikasa-main .animate-page tbody tr:hover {
-  background-color: #f7faf7;
+  background-color: #fffcf1;
 }
 
 .sikasa-main .animate-page button {
@@ -453,7 +455,64 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 .sikasa-workspace :focus-visible {
-  outline-color: #94b84a;
+  outline-color: #8a6900;
+}
+
+/* Warna aksen FEB: kuning emas untuk aksi, ikon dan sorotan. Teks pada
+   permukaan emas memakai tinta gelap agar tetap terbaca dengan kontras tinggi. */
+.sikasa-workspace [class~="bg-emerald-700"],
+.sikasa-workspace [class~="bg-emerald-800"],
+.sikasa-workspace [class~="bg-emerald-600"],
+.sikasa-workspace [class~="bg-emerald-500"],
+.sikasa-workspace [class~="bg-sky-700"] {
+  background-color: var(--feb-gold) !important;
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-workspace [class~="bg-emerald-50"],
+.sikasa-workspace [class~="bg-emerald-50/40"],
+.sikasa-workspace [class~="bg-emerald-50/50"],
+.sikasa-workspace [class~="bg-emerald-100"],
+.sikasa-workspace [class~="bg-sky-50"],
+.sikasa-workspace [class~="bg-sky-50/40"] {
+  background-color: var(--feb-gold-soft) !important;
+}
+
+.sikasa-workspace [class~="text-emerald-700"],
+.sikasa-workspace [class~="text-emerald-800"],
+.sikasa-workspace [class~="text-emerald-900"],
+.sikasa-workspace [class~="text-emerald-600"],
+.sikasa-workspace [class~="text-sky-700"],
+.sikasa-workspace [class~="text-sky-800"] {
+  color: var(--feb-gold-text) !important;
+}
+
+.sikasa-workspace [class~="border-emerald-100"],
+.sikasa-workspace [class~="border-emerald-200"],
+.sikasa-workspace [class~="border-emerald-300"],
+.sikasa-workspace [class~="border-sky-200"] {
+  border-color: var(--feb-gold-line) !important;
+}
+
+.sikasa-workspace [class~="hover:bg-emerald-800"]:hover,
+.sikasa-workspace [class~="hover:bg-emerald-700"]:hover,
+.sikasa-workspace [class~="hover:bg-emerald-100"]:hover {
+  background-color: #e4b800 !important;
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-workspace [class*="bg-[#173a35]"] {
+  background-color: var(--feb-gold) !important;
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-workspace [class*="text-[#d9ef83]"] {
+  color: var(--sikasa-ink) !important;
+}
+
+.sikasa-workspace [class*="hover:bg-[#244b45]"]:hover {
+  background-color: #e4b800 !important;
+  color: var(--sikasa-ink) !important;
 }
 
 /* Ikon, avatar, dan indikator status memakai ukuran tetap di dalam baris flex.
@@ -492,13 +551,13 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 .geo-loading {
   --base_scale: 5vh;
   --floor: 15vh;
-  --color: #836ee5;
+  --color: #f2c400;
   position: fixed;
   inset: 0;
   /* Di atas header (z-20), sidebar, modal (z-50) & toast (z-[60]) — splash
      dirender sebagai overlay terakhir saat transisi ke halaman. */
   z-index: 100;
-  background: #eee;
+  background: #fbf9f0;
   overflow: hidden;
   transition:
     opacity 560ms cubic-bezier(0.22, 1, 0.36, 1),

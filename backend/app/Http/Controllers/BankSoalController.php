@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BankSoal;
 use App\Services\ActivityLogger;
+use App\Services\ApprovalSignatureService;
 use App\Services\FileProtectionService;
 use App\Services\NotifikasiService;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,7 @@ class BankSoalController extends Controller
 {
     public function __construct(
         private readonly FileProtectionService $files,
+        private readonly ApprovalSignatureService $approvalSignatures,
     ) {}
 
     /**
@@ -86,6 +88,12 @@ class BankSoalController extends Controller
             'jadwal_ujian' => ['required', 'date'],
             'durasi_menit' => ['nullable', 'integer', 'min:1', 'max:480'],
             'template_soal_id' => ['nullable', 'integer', 'exists:template_soal,id'],
+            'signature_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+            'signature_x' => ['nullable', 'numeric', 'min:0', 'max:1000', 'required_with:signature_page'],
+            'signature_y' => ['nullable', 'numeric', 'min:0', 'max:1000', 'required_with:signature_page'],
+            'signature_width' => ['nullable', 'numeric', 'gt:0', 'max:500', 'required_with:signature_page'],
+            'signature_height' => ['nullable', 'numeric', 'gt:0', 'max:100', 'required_with:signature_page'],
+            'signature_name_y' => ['nullable', 'numeric', 'min:0', 'max:1000', 'required_with:signature_page'],
             'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
         ]);
 
@@ -104,6 +112,12 @@ class BankSoalController extends Controller
             'original_filename' => $fileStored['original_filename'],
             'file_hash' => $fileStored['file_hash'],
             'template_soal_id' => $data['template_soal_id'] ?? null,
+            'signature_page' => $data['signature_page'] ?? null,
+            'signature_x' => $data['signature_x'] ?? null,
+            'signature_y' => $data['signature_y'] ?? null,
+            'signature_width' => $data['signature_width'] ?? null,
+            'signature_height' => $data['signature_height'] ?? null,
+            'signature_name_y' => $data['signature_name_y'] ?? null,
             'status' => 'terkunci',
             'jumlah_mahasiswa' => $data['jumlah_mahasiswa'],
             'jadwal_ujian' => $data['jadwal_ujian'],
@@ -188,9 +202,35 @@ class BankSoalController extends Controller
         }
 
         $approved = $data['keputusan'] === 'disetujui';
+        $approver = $request->user();
+        if ($approved && ! $approver->signature_path) {
+            return response()->json(['message' => 'Unggah tanda tangan di menu Profil sebelum menyetujui soal.'], 422);
+        }
+        if ($approved && ! \Illuminate\Support\Facades\Storage::disk('local')->exists($approver->signature_path)) {
+            return response()->json(['message' => 'File tanda tangan tidak ditemukan. Unggah ulang melalui menu Profil.'], 422);
+        }
+        $approvalAt = now();
+        $approvalSignaturePath = null;
+        if ($approved) {
+            $extension = pathinfo($approver->signature_path, PATHINFO_EXTENSION) ?: 'png';
+            $approvalSignaturePath = 'approval-signatures/soal-'.$soal->id.'-'.$approvalAt->format('YmdHis').'.'.$extension;
+            \Illuminate\Support\Facades\Storage::disk('local')->copy($approver->signature_path, $approvalSignaturePath);
+            try {
+                $this->approvalSignatures->stamp($soal, $approvalSignaturePath, $approver->nama, $approvalAt);
+            } catch (\Throwable $error) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($approvalSignaturePath);
+                report($error);
+                return response()->json(['message' => 'PDF tidak dapat diberi tanda tangan otomatis. Periksa file PDF dan coba unggah ulang.'], 422);
+            }
+        }
         $soal->update([
             'status' => $approved ? 'siap_ujian' : 'ditolak',
             'catatan_persetujuan' => $data['catatan'] ?? null,
+            'approved_by' => $approved ? $approver->id : null,
+            'approval_name' => $approved ? $approver->nama : null,
+            'approval_signature_path' => $approvalSignaturePath,
+            'approved_at' => $approved ? $approvalAt : null,
+            'file_hash' => $soal->file_hash,
         ]);
         ActivityLogger::log($approved ? 'soal_disetujui' : 'soal_ditolak', ['catatan' => $data['catatan'] ?? null], $soal->id, $request->user());
         if ($soal->user_id) {
@@ -236,6 +276,7 @@ class BankSoalController extends Controller
             'jenis' => $s->jenis,
             'judul' => $s->judul,
             'status' => $s->status,
+            'ujian_selesai' => $s->isUjianSelesai(),
             'jumlah_mahasiswa' => $s->jumlah_mahasiswa,
             'jadwal_ujian' => optional($s->jadwal_ujian)->format('Y-m-d H:i'),
             'waktu_mulai_ujian' => optional($s->waktu_mulai_ujian)->format('Y-m-d H:i'),

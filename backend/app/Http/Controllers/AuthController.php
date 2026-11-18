@@ -77,6 +77,7 @@ class AuthController extends Controller
             'current_password' => ['nullable', 'string'],
             'new_password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'photo' => ['nullable', 'image', 'max:3072'],
+            'signature' => ['nullable', 'image', 'mimes:png,jpg,jpeg', 'max:2048'],
         ]);
         $user = $request->user();
         if (! empty($data['new_password'])) {
@@ -86,12 +87,21 @@ class AuthController extends Controller
             $user->password = $data['new_password'];
         }
         $user->nama = trim($data['nama']);
+        $oldSignature = null;
         if ($request->hasFile('photo')) {
             $oldPhoto = $user->profile_photo_path;
             $user->profile_photo_path = $request->file('photo')->store('profile-photos', 'public');
             if ($oldPhoto) Storage::disk('public')->delete($oldPhoto);
         }
+        if ($request->hasFile('signature')) {
+            if ($user->role !== 'kaprodi') {
+                throw ValidationException::withMessages(['signature' => ['Tanda tangan hanya dapat diatur oleh Kaprodi.']]);
+            }
+            $oldSignature = $user->signature_path;
+            $user->signature_path = $request->file('signature')->store('signatures', 'local');
+        }
         $user->save();
+        if ($oldSignature) Storage::disk('local')->delete($oldSignature);
         ActivityLogger::log('profil_diperbarui', ['nama' => $user->nama], null, $user);
         return response()->json(['user' => $this->profile($user)]);
     }
@@ -106,6 +116,7 @@ class AuthController extends Controller
             'role' => $user->role,
             'is_active' => $user->is_active,
             'photo_url' => $user->profile_photo_path ? url(Storage::url($user->profile_photo_path)) : null,
+            'has_signature' => (bool) $user->signature_path,
         ];
     }
 }

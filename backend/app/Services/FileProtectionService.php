@@ -47,6 +47,12 @@ class FileProtectionService
         return Crypt::decryptString(Storage::disk('local')->get($path));
     }
 
+    /** Replace an existing private PDF with its newly generated encrypted version. */
+    public function replaceEncrypted(string $path, string $plainBytes): void
+    {
+        Storage::disk('local')->put($path, Crypt::encryptString($plainBytes));
+    }
+
     /**
      * Hapus berkas fisik dari disk (soft-delete data tetap ada di DB).
      */

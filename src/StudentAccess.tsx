@@ -264,7 +264,7 @@ export default function StudentAccess({ token }: Props) {
       {exam && canVerify && !pdf && !accessLocked && <section className="verify-card">
         <div className="verify-intro"><span className="verify-step">Langkah 1 dari 2</span><p>Masukkan NIM yang terdaftar. Kode verifikasi akan dikirim ke email kampus pada roster sesi.</p></div>
         <form className="verify-step-card" onSubmit={requestCode}>
-          <label htmlFor="student-nim">NIM</label><input id="student-nim" required maxLength={40} inputMode="numeric" autoComplete="username" value={nim} onChange={(e) => setNim(e.target.value)} />
+          <label htmlFor="student-nim">NIM</label><input id="student-nim" required maxLength={40} inputMode="numeric" autoComplete="username" value={nim} onChange={(e) => { setNim(e.target.value); setOtp(""); setOtpSent(false); setNotice(""); setError("") }} />
           <button disabled={loading}>{loading ? "Memproses..." : "Kirim kode ke email terdaftar"}</button>
         </form>
         {otpSent && <form className="verify-step-card verify-step-card-next" onSubmit={verifyAndOpen}>

@@ -48,6 +48,7 @@ export interface User {
 
   aktif: boolean
   photoUrl?: string | null
+  hasSignature?: boolean
 }
 
 // b. Tabel `mata_kuliah`
@@ -84,6 +85,8 @@ export interface BankSoal {
   judul: string
 
   status: "terkunci" | "ditolak" | "siap_ujian" | "arsip"
+
+  ujian_selesai?: boolean
 
   jadwal_ujian: string
 
@@ -421,6 +424,7 @@ interface ApiUser {
 
   is_active: boolean
   photo_url?: string | null
+  has_signature?: boolean
 }
 
 // BankSoalController::transform() — dipakai /soal-saya dan /soal (create)
@@ -439,6 +443,8 @@ interface ApiSoal {
   judul: string
 
   status: string
+
+  ujian_selesai?: boolean
 
   jumlah_mahasiswa: number
 
@@ -509,6 +515,7 @@ export function toUiUser(api: ApiUser): User {
 
     aktif: Boolean(api.is_active),
     photoUrl: api.photo_url ?? null,
+    hasSignature: Boolean(api.has_signature),
   }
 }
 
@@ -544,6 +551,7 @@ export function toUiSoal(api: ApiSoal): BankSoal {
     jenis: api.jenis,
     judul: api.judul,
     status: api.status === "ditolak" || api.status === "siap_ujian" || api.status === "arsip" ? api.status : "terkunci",
+    ujian_selesai: Boolean(api.ujian_selesai) || api.status === "selesai" || api.status === "arsip",
     jadwal_ujian: normalizeDateTime(api.jadwal_ujian),
     waktu_mulai_ujian: normalizeDateTime(api.waktu_mulai_ujian) || null,
     jumlah_mahasiswa: api.jumlah_mahasiswa,
@@ -777,6 +785,15 @@ export interface UploadSoalInput {
   file: File
 
   templateSoalId?: number | null
+
+  signatureLayout?: {
+    page: number
+    x: number
+    y: number
+    width: number
+    height: number
+    nameY: number
+  } | null
 }
 
 export interface TemplateSoal {
@@ -826,6 +843,15 @@ export async function createBankSoal(
 
   if (input.templateSoalId != null) {
     form.append("template_soal_id", String(input.templateSoalId))
+  }
+
+  if (input.signatureLayout) {
+    form.append("signature_page", String(input.signatureLayout.page))
+    form.append("signature_x", String(input.signatureLayout.x))
+    form.append("signature_y", String(input.signatureLayout.y))
+    form.append("signature_width", String(input.signatureLayout.width))
+    form.append("signature_height", String(input.signatureLayout.height))
+    form.append("signature_name_y", String(input.signatureLayout.nameY))
   }
 
   form.append("file", input.file)
@@ -1815,6 +1841,8 @@ export interface PesertaTerkunci {
   unlock_requested_at: string | null
   unlock_request_note: string | null
   peminta: string | null
+  sesi_aktif: boolean
+  sesi_selesai: boolean
 }
 
 export async function fetchPesertaTerkunci(): Promise<PesertaTerkunci[]> {
@@ -1833,6 +1861,11 @@ export async function fetchPermintaanBukaAkses(): Promise<PesertaTerkunci[]> {
 
 export async function bukaAksesPeserta(id: number, catatan: string): Promise<void> {
   await apiFetch(`/permintaan-buka-akses/${id}/buka`, { method: "POST", body: JSON.stringify({ catatan }) })
+}
+
+export async function hapusPermintaanLama(id: number): Promise<string> {
+  const res = await apiFetch<{ message: string }>(`/permintaan-buka-akses/${id}`, { method: "DELETE" })
+  return res.message
 }
 
 export async function fetchSoalDisetujui(): Promise<SoalDisetujui[]> {
@@ -2073,7 +2106,7 @@ export async function updateUser(
   return toUiUser(res.data)
 }
 
-export async function updateMyProfile(input: { nama: string; currentPassword?: string; newPassword?: string; photo?: File }): Promise<User> {
+export async function updateMyProfile(input: { nama: string; currentPassword?: string; newPassword?: string; photo?: File; signature?: File }): Promise<User> {
   const body = new FormData()
   body.set("nama", input.nama)
   if (input.currentPassword) body.set("current_password", input.currentPassword)
@@ -2082,6 +2115,7 @@ export async function updateMyProfile(input: { nama: string; currentPassword?: s
     body.set("new_password_confirmation", input.newPassword)
   }
   if (input.photo) body.set("photo", input.photo)
+  if (input.signature) body.set("signature", input.signature)
   const res = await apiFetch<{ user: ApiUser }>("/profile", { method: "POST", body })
   return toUiUser(res.user)
 }
