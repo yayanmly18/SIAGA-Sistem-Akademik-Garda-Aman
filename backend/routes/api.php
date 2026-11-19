@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Route;
 */
 
 // --- Publik: login ---
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 // Token QR berfungsi sebagai akses terbatas ke PDF selama waktu ujian.
 Route::get('/ujian-online/akses/{token}', [UjianOnlineController::class, 'aksesViaQr'])->middleware('throttle:30,1')->name('ujian.akses');
 Route::post('/ujian-online/akses/{token}/otp', [UjianOnlineController::class, 'requestOtp'])->middleware('throttle:10,1');

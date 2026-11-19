@@ -71,21 +71,12 @@ class UjianOnlineController extends Controller
         $this->limiter->hit($rateKey, 300);
 
         $peserta = PesertaSesiUjian::where('sesi_ujian_id', $sesi->id)->where('nim', $nim)->first();
-        if (! $peserta) {
-            return response()->json(['message' => 'NIM tidak terdaftar pada sesi ini. Masukkan NIM yang terdaftar di roster atau hubungi Panitia.'], 422);
-        }
-        if ($peserta->access_locked_at) {
-            return response()->json(['message' => 'Akses soal dikunci setelah tiga kali meninggalkan halaman. Hubungi Panitia untuk meminta pemeriksaan.'], 423);
-        }
-        if ($peserta->otp_attempts < 5) {
+        if ($peserta && ! $peserta->access_locked_at) {
             $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
             $peserta->update([
                 'otp_hash' => hash_hmac('sha256', $otp, (string) config('app.key')),
                 'otp_expires_at' => now()->addMinutes(5),
                 'otp_attempts' => 0,
-                'verified_token_hash' => null,
-                'verified_token_expires_at' => null,
-                'verified_at' => null,
             ]);
             try {
                 Mail::raw("Kode verifikasi SIKASA Anda: {$otp}. Kode berlaku selama 5 menit. Jangan berikan kode ini kepada siapa pun.", function ($message) use ($peserta) {
@@ -97,7 +88,9 @@ class UjianOnlineController extends Controller
             }
         }
 
-        return response()->json(['message' => 'Kode verifikasi dikirim ke email kampus yang terdaftar pada roster sesi.'], 202);
+        return response()->json([
+            'message' => 'Jika data peserta sesuai dan sesi tersedia, instruksi verifikasi akan dikirim ke email terdaftar.',
+        ], 202)->header('Cache-Control', 'no-store, private');
     }
 
     public function verifyOtp(Request $request, string $token): JsonResponse
@@ -118,10 +111,7 @@ class UjianOnlineController extends Controller
         }
         $this->limiter->hit($verifyKey, 300);
         $peserta = PesertaSesiUjian::where('sesi_ujian_id', $sesi->id)->where('nim', $nim)->first();
-        if ($peserta?->access_locked_at) {
-            return response()->json(['message' => 'Akses soal dikunci setelah tiga kali meninggalkan halaman. Hubungi Panitia untuk meminta pemeriksaan.'], 423);
-        }
-        if (! $peserta || ! $peserta->otp_hash || ! $peserta->otp_expires_at || $peserta->otp_expires_at->lessThanOrEqualTo(now()) || $peserta->otp_attempts >= 5) {
+        if (! $peserta || $peserta->access_locked_at || ! $peserta->otp_hash || ! $peserta->otp_expires_at || $peserta->otp_expires_at->lessThanOrEqualTo(now()) || $peserta->otp_attempts >= 5) {
             return response()->json(['message' => 'Kode tidak valid atau kedaluwarsa. Minta kode baru dan coba kembali.'], 422);
         }
         $providedHash = hash_hmac('sha256', $data['kode'], (string) config('app.key'));

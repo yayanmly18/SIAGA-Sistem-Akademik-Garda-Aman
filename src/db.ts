@@ -303,7 +303,7 @@ export class ApiError extends Error {
 
 function browserStorage(): Storage | null {
   try {
-    return typeof localStorage !== "undefined" ? localStorage : null
+    return typeof sessionStorage !== "undefined" ? sessionStorage : null
   } catch {
     return null
   }

@@ -11,6 +11,7 @@ use App\Services\PrintService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class CetakController extends Controller
@@ -26,6 +27,8 @@ class CetakController extends Controller
      */
     public function antrian(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->role === 'panitia', 403, 'Hanya Panitia yang dapat melihat antrian cetak.');
+
         $soal = BankSoal::with(['mataKuliah', 'dosen'])
             ->where('status', 'siap_cetak')
             ->orderByDesc('created_at')
@@ -57,6 +60,8 @@ class CetakController extends Controller
      */
     public function cetak(Request $request, int $id): JsonResponse
     {
+        abort_unless($request->user()?->role === 'panitia', 403, 'Hanya Panitia yang dapat mencetak soal.');
+
         $data = $request->validate([
             'jumlah_cetak' => ['required', 'integer', 'min:1', 'max:500'],
             'pin_kaprodi' => ['required', 'string', 'regex:/^[0-9]{6}$/'],
@@ -73,6 +78,12 @@ class CetakController extends Controller
             return response()->json(['message' => $cek['reason']], 422);
         }
 
+        $ipKey = 'print-pin:ip:'.hash_hmac('sha256', (string) $request->ip(), (string) config('app.key'));
+        $userKey = 'print-pin:user:'.hash_hmac('sha256', (string) $request->user()->id, (string) config('app.key'));
+        if (RateLimiter::tooManyAttempts($ipKey, 5) || RateLimiter::tooManyAttempts($userKey, 5)) {
+            return response()->json(['message' => 'Batas percobaan PIN cetak tercapai. Coba kembali dalam 15 menit.'], 429);
+        }
+
         // Otorisasi PIN Cetak HARIAN — cocokkan PIN dengan kaprodi aktif mana
         // pun yang memilikinya, DAN pin_cetak_at-nya jatuh hari ini
         // (Asia/Jakarta). PIN kemarin otomatis kedaluwarsa; dalam sehari yang
@@ -87,6 +98,8 @@ class CetakController extends Controller
             ->first(fn (User $u) => Hash::check($data['pin_kaprodi'], $u->pin_cetak));
 
         if (! $kaprodi) {
+            RateLimiter::hit($ipKey, 900);
+            RateLimiter::hit($userKey, 900);
             ActivityLogger::log('cetak_ditolak', [
                 'alasan' => 'PIN Cetak salah / kedaluwarsa',
                 'bank_soal_id' => $soal->id,
@@ -96,6 +109,9 @@ class CetakController extends Controller
                 'pin_kaprodi' => ['PIN Cetak tidak valid atau sudah kedaluwarsa. Minta PIN hari ini ke Kaprodi.'],
             ]);
         }
+
+        RateLimiter::clear($ipKey);
+        RateLimiter::clear($userKey);
 
         // Tentukan printer tujuan ala Word: prioritas pilihan petugas (printer_id),
         // lalu printer aktif pertama, lalu printer pertama yang ada. Job TETAP

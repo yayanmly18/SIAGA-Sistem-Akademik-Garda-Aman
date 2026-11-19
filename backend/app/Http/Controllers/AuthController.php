@@ -34,7 +34,7 @@ class AuthController extends Controller
 
         if (! $user->is_active) {
             throw ValidationException::withMessages([
-                'email' => ['Akun Anda tidak aktif. Hubungi Admin IT.'],
+                'email' => ['Email atau kata sandi tidak sesuai.'],
             ]);
         }
 
@@ -80,11 +80,13 @@ class AuthController extends Controller
             'signature' => ['nullable', 'image', 'mimes:png,jpg,jpeg', 'max:2048'],
         ]);
         $user = $request->user();
+        $passwordChanged = false;
         if (! empty($data['new_password'])) {
             if (empty($data['current_password']) || ! Hash::check($data['current_password'], $user->password)) {
                 throw ValidationException::withMessages(['current_password' => ['Kata sandi saat ini tidak sesuai.']]);
             }
             $user->password = $data['new_password'];
+            $passwordChanged = true;
         }
         $user->nama = trim($data['nama']);
         $oldSignature = null;
@@ -101,6 +103,14 @@ class AuthController extends Controller
             $user->signature_path = $request->file('signature')->store('signatures', 'local');
         }
         $user->save();
+        if ($passwordChanged) {
+            $currentTokenId = $user->currentAccessToken()?->getKey();
+            $tokens = $user->tokens();
+            if ($currentTokenId !== null) {
+                $tokens->where('id', '!=', $currentTokenId);
+            }
+            $tokens->delete();
+        }
         if ($oldSignature) Storage::disk('local')->delete($oldSignature);
         ActivityLogger::log('profil_diperbarui', ['nama' => $user->nama], null, $user);
         return response()->json(['user' => $this->profile($user)]);

@@ -12,13 +12,11 @@ return [
     | PERNAH dikirim ke perangkat petugas/TU — hanya dicetak di sisi server.
     |
     | print_command: perintah shell untuk mengirim PDF ke printer.
-    |   Placeholder {file} diganti path PDF spool, {printer} nama/alamat printer.
+    |   Placeholder {file} dan {printer} diganti secara aman sebagai argumen.
     |   Contoh:
-    |     Windows SumatraPDF : 'SumatraPDF.exe -print-to "{printer}" "{file}"'
-    |     Windows PDFtoPrinter: 'PDFtoPrinter.exe "{file}" "{printer}"'
-    |     Windows PowerShell (tanpa tools tambahan, pakai PDF reader default):
-    |       'powershell -NoProfile -Command "Start-Process -FilePath \'{file}\' -Verb PrintTo \'{printer}\'"'
-    |     Linux   : 'lp -d {printer} "{file}"'
+    |     Windows SumatraPDF : 'SumatraPDF.exe -print-to {printer} {file}'
+    |     Windows PDFtoPrinter: 'PDFtoPrinter.exe {file} {printer}'
+    |     Linux   : 'lp -d {printer} {file}'
     |   Kosongkan (null) untuk mode "spool saja" (PDF disimpan, tanpa kirim OS).
     |
     */
@@ -44,6 +42,9 @@ return [
     'backup_jadwal' => env('EBRANKAS_BACKUP_JADWAL', '02:00'),
 
     'backup_path' => env('EBRANKAS_BACKUP_PATH', null),
+
+    // Wajib diisi dengan rahasia khusus backup; jangan gunakan APP_KEY.
+    'backup_password' => env('EBRANKAS_BACKUP_PASSWORD', null),
 
     'backup_retensi' => (int) env('EBRANKAS_BACKUP_RETENSI', 14),
 ];

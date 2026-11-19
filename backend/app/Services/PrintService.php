@@ -9,6 +9,7 @@ use App\Models\User;
 use Dompdf\Dompdf;
 use Illuminate\Support\Facades\Log;
 use setasign\Fpdi\Fpdi;
+use Symfony\Component\Process\Process;
 
 class PrintService
 {
@@ -233,17 +234,30 @@ class PrintService
         $command = config('ebrankas.print_command');
 
         if (is_string($command) && trim($command) !== '') {
-            $target = str_replace(
-                ['{file}', '{printer}'],
-                [$spoolFile, $printer->alamat_printer ?: $printer->nama_printer],
+            // Symfony Process escapes quoted ${:name} placeholders before the
+            // shell parses them, so printer/file values cannot add shell syntax.
+            $command = preg_replace_callback('/(?<!\{)\{(file|printer)\}(?!\})/',
+                fn (array $match) => '"${:'.$match[1].'}"',
                 $command,
+            ) ?? $command;
+            $process = Process::fromShellCommandline(
+                $command,
+                null,
+                null,
+                null,
+                max(1, (int) config('ebrankas.command_timeout', 60)),
             );
-
-            $exitCode = 0;
-            $output = [];
-            // escapeshellarg pada path agar aman terhadap spasi/karakter khusus.
-            $safeTarget = $this->quotePaths($target);
-            @exec($safeTarget.' 2>&1', $output, $exitCode);
+            $exitCode = -1;
+            $output = '';
+            try {
+                $exitCode = $process->run(null, [
+                    'file' => $spoolFile,
+                    'printer' => $printer->alamat_printer ?: $printer->nama_printer,
+                ]);
+                $output = trim($process->getOutput().$process->getErrorOutput());
+            } catch (\Throwable $exception) {
+                $output = $exception->getMessage();
+            }
 
             Log::info('Print job dispatch', [
                 'printer' => $printer->nama_printer,
@@ -251,7 +265,7 @@ class PrintService
                 'job_id' => $logCetak->job_id,
                 'spool_file' => $spoolFile,
                 'exit_code' => $exitCode,
-                'output' => implode("\n", $output),
+                'output' => $output,
             ]);
 
             return $exitCode === 0 ? 'berhasil' : 'gagal';
@@ -267,14 +281,5 @@ class PrintService
         return 'menunggu';
     }
 
-    /**
-     * Beri tanda kutip pada placeholder {file} yang mungkin mengandung spasi.
-     */
-    private function quotePaths(string $command): string
-    {
-        return preg_replace_callback('/\{([^}]*)\}/', function ($m) {
-            return '"'.str_replace('"', '', $m[1]).'"';
-        }, $command) ?? $command;
-    }
 }
 

@@ -97,6 +97,12 @@ class BankSoalController extends Controller
             'file' => ['required', 'file', 'mimetypes:application/pdf', 'max:10240'],
         ]);
 
+        abort_unless(
+            $request->user()->mataKuliah()->whereKey($data['mk_id'])->exists(),
+            403,
+            'Mata kuliah ini tidak ditugaskan kepada Anda.'
+        );
+
         $fileStored = $this->files->storeEncrypted($request->file('file'));
         $waktuMulai = new \DateTime($data['jadwal_ujian']);
 

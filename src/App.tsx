@@ -977,11 +977,6 @@ function PromptCard({
   )
 }
 
-interface DemoCredential {
-  email: string
-  password: string
-}
-
 // Sapaan singkat pada heading form (mis. "Hai, Kaprodi").
 const roleSapaan: Record<UserRole, string> = {
   dosen: "Dosen",
@@ -1040,20 +1035,13 @@ function LoginPage({
 }) {
   const [selectedRole, setSelectedRole] = useState<UserRole>("panitia")
   const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState("siti.h@feb.ac.id")
-  const [password, setPassword] = useState("panitia123")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [catatan, setCatatan] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [slide, setSlide] = useState(0)
   const [info, setInfo] = useState<null | "alur" | "bantuan">(null)
-  // Kredensial demo per peran — di produksi diganti autentikasi server.
-  const demoCredentials: Record<UserRole, DemoCredential> = {
-    dosen: { email: "rina.kurniawati@feb.ac.id", password: "dosen123" },
-    kaprodi: { email: "dian.puspitasari@feb.ac.id", password: "kaprodi123" },
-    panitia: { email: "siti.h@feb.ac.id", password: "panitia123" },
-    admin: { email: "rizky.it@feb.ac.id", password: "admin123" },
-  }
   const geser = (arah: number) =>
     setSlide((n) => (n + arah + loginSlides.length) % loginSlides.length)
   // Ganti slide otomatis setiap 5 detik.
@@ -1252,8 +1240,6 @@ function LoginPage({
                     key={role}
                     onClick={() => {
                       setSelectedRole(role)
-                      setEmail(demoCredentials[role].email)
-                      setPassword(demoCredentials[role].password)
                       setError("")
                       setCatatan("")
                     }}

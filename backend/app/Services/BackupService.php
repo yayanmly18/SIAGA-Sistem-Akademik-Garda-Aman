@@ -28,8 +28,9 @@ class BackupService
         }
 
         if (! is_dir($dir)) {
-            @mkdir($dir, 0775, true);
+            @mkdir($dir, 0700, true);
         }
+        @chmod($dir, 0700);
 
         return $dir;
     }
@@ -71,9 +72,15 @@ class BackupService
         $nama = self::namaBerkas();
         $pathZip = $dir.DIRECTORY_SEPARATOR.$nama;
         $kerja = sys_get_temp_dir().DIRECTORY_SEPARATOR.'ebk-dump-'.uniqid();
+        $zip = null;
 
         try {
-            if (! @mkdir($kerja, 0775, true)) {
+            $password = (string) config('ebrankas.backup_password', '');
+            if (strlen($password) < 32) {
+                throw new RuntimeException('EBRANKAS_BACKUP_PASSWORD wajib diatur dengan rahasia minimal 32 karakter.');
+            }
+
+            if (! @mkdir($kerja, 0700, true)) {
                 throw new RuntimeException('Tidak dapat membuat direktori kerja sementara.');
             }
 
@@ -84,8 +91,13 @@ class BackupService
             if ($zip->open($pathZip, ZipArchive::CREATE) !== true) {
                 throw new RuntimeException('Tidak dapat membuat arsip ZIP: '.$pathZip);
             }
+            if (! $zip->setPassword($password)) {
+                throw new RuntimeException('Ekstensi ZIP tidak dapat mengatur kata sandi backup.');
+            }
 
-            $zip->addFile($dumpSql, 'database.sql');
+            if (! $zip->addFile($dumpSql, 'database.sql') || ! $zip->setEncryptionName('database.sql', ZipArchive::EM_AES_256)) {
+                throw new RuntimeException('Tidak dapat mengenkripsi dump database dengan AES-256.');
+            }
 
             $diskSoal = storage_path('app'.DIRECTORY_SEPARATOR.'soal');
             $jumlahSoal = $this->arsipkanDirektori($zip, $diskSoal, 'soal/');
@@ -93,12 +105,17 @@ class BackupService
             if (! $zip->close()) {
                 throw new RuntimeException('Gagal menutup arsip ZIP.');
             }
+            $zip = null;
 
+            @chmod($pathZip, 0600);
             $ukuran = filesize($pathZip) ?: null;
             $dihapus = self::rapikan((int) config('ebrankas.backup_retensi', 14));
 
             return $this->catat('sukses', $nama, $ukuran, 'Dump database + '.$jumlahSoal.' berkas soal terenkripsi'.($dihapus ? '; merapikan '.count($dihapus).' cadangan lama' : ''));
         } catch (\Throwable $e) {
+            if ($zip instanceof ZipArchive) {
+                @$zip->close();
+            }
             @unlink($pathZip);
 
             return $this->catat('gagal', $nama, null, 'Gagal: '.$e->getMessage());
@@ -134,7 +151,11 @@ class BackupService
                 continue;
             }
             $relatif = substr($file->getPathname(), strlen($dir) + 1);
-            $zip->addFile($file->getPathname(), $awalanZip.str_replace(DIRECTORY_SEPARATOR, '/', $relatif));
+            $namaDalamZip = $awalanZip.str_replace(DIRECTORY_SEPARATOR, '/', $relatif);
+            if (! $zip->addFile($file->getPathname(), $namaDalamZip)
+                || ! $zip->setEncryptionName($namaDalamZip, ZipArchive::EM_AES_256)) {
+                throw new RuntimeException('Tidak dapat mengenkripsi berkas soal untuk backup.');
+            }
             $jumlah++;
         }
 

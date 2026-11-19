@@ -43,6 +43,8 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:8'],
         ]);
 
+        $this->guardAdminItAccountMutation($request, null, $data['role']);
+
         $pinAwal = $data['role'] === 'kaprodi' ? self::generatePin() : null;
 
         $user = User::create([
@@ -86,6 +88,8 @@ class UserController extends Controller
             'role' => ['required', Rule::in(User::ROLES)],
         ]);
 
+        $this->guardAdminItAccountMutation($request, $user, $data['role']);
+
         $user->update([
             'nidn' => $data['nidn'] ?? null,
             'nama' => $data['nama'],
@@ -108,9 +112,14 @@ class UserController extends Controller
     {
         $user = User::findOrFail($id);
 
+        $this->guardAdminItAccountMutation($request, $user);
+
         abort_if($user->id === $request->user()->id, 422, 'Anda tidak dapat menonaktifkan akun sendiri.');
 
         $user->update(['is_active' => ! $user->is_active]);
+        if (! $user->is_active) {
+            $user->tokens()->delete();
+        }
 
         ActivityLogger::log('ubah_status_user', ['user_id' => $user->id, 'is_active' => $user->is_active], null, $request->user());
 
@@ -130,7 +139,9 @@ class UserController extends Controller
         ]);
 
         $user = User::findOrFail($id);
+        $this->guardAdminItAccountMutation($request, $user);
         $user->update(['password' => $data['password']]);
+        $user->tokens()->delete();
 
         ActivityLogger::log('reset_password', ['user_id' => $user->id], null, $request->user());
 
@@ -174,5 +185,19 @@ class UserController extends Controller
     private static function generatePin(): string
     {
         return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+    }
+
+    /** Kaprodi dapat mengelola akun operasional, tetapi tidak akun Admin IT. */
+    private function guardAdminItAccountMutation(Request $request, ?User $target = null, ?string $newRole = null): void
+    {
+        if ($request->user()->role !== 'kaprodi') {
+            return;
+        }
+
+        abort_if(
+            $target?->role === 'admin_it' || $newRole === 'admin_it',
+            403,
+            'Kaprodi tidak dapat membuat, mengubah, atau mengelola akun Admin IT.'
+        );
     }
 }

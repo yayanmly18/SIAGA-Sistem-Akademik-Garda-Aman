@@ -56,7 +56,7 @@ import {
 
 // ---------------------------------------------------------------------------
 
-// Fasilitas uji: localStorage tiruan + mock fetch yang merekam panggilan.
+// Fasilitas uji: sessionStorage tiruan + mock fetch yang merekam panggilan.
 
 // ---------------------------------------------------------------------------
 
@@ -88,10 +88,10 @@ globalThis.fetch = ((async (url: string, init?: RequestInit) => {
   return respond(url, init)
 }) as typeof fetch)
 
-// localStorage tiruan (Node tidak menyediakan localStorage default).
+// sessionStorage tiruan (Node tidak menyediakan sessionStorage default).
 
 const store = new Map<string, string>()
-;(globalThis as { localStorage?: unknown }).localStorage = {
+;(globalThis as { sessionStorage?: unknown }).sessionStorage = {
   getItem: (k: string) => store.get(k) ?? null,
 
   setItem: (k: string, v: string) => void store.set(k, v),

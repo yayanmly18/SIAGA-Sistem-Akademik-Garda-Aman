@@ -45,6 +45,7 @@ Copy-Item .env.example .env
 composer install
 php artisan key:generate
 # Atur koneksi MySQL/MariaDB, APP_URL, SMTP, dan SIKASA_FRONTEND_URL di .env
+# Jika memakai fitur backup, isi EBRANKAS_BACKUP_PASSWORD dengan rahasia acak minimal 32 karakter.
 php artisan migrate --seed
 php artisan serve
 ```
@@ -79,3 +80,41 @@ php artisan migrate:status
 - **Admin IT:** akun dan infrastruktur.
 
 Laporan audit arsitektur, database, keamanan, dan status implementasi tersedia dalam `SYSTEM_AUDIT.md`, `EXISTING_ARCHITECTURE.md`, `DATABASE_ANALYSIS.md`, `SECURITY_ASSESSMENT.md`, dan `IMPLEMENTATION_PLAN.md`.
+
+## Audit keamanan dan tindak lanjut
+
+Pemeriksaan source-only terakhir: 19 November 2026. Perubahan di bawah merupakan perbaikan pada kode yang ditinjau. Audit tidak mengakses deployment, database, `.env` aktif, log, atau storage produksi; hasilnya bukan sertifikasi keamanan. Tidak ada test, build, atau endpoint produksi yang dijalankan.
+
+### Temuan dan perbaikan
+
+| Severity saat ditemukan | Temuan dan bukti | Perbaikan |
+| --- | --- | --- |
+| High | Kaprodi dapat membuat atau mengubah pengguna menjadi `admin_it` melalui manajemen pengguna. Route memberi akses Kaprodi, sedangkan controller menerima semua role (`backend/routes/api.php:133–139`, `backend/app/Http/Controllers/UserController.php`). | Controller kini menolak Kaprodi membuat, mempromosikan, atau mengelola akun Admin IT. Admin IT tetap dapat mengelola akun sesuai route. |
+| Medium | Dosen dapat mengirim `mk_id` yang tidak ditugaskan kepadanya saat mengunggah soal (`backend/app/Http/Controllers/BankSoalController.php`). | Relasi penugasan mata kuliah diverifikasi sebelum file ditulis. |
+| Medium | OTP dapat terkunci permanen setelah lima percobaan gagal karena permintaan kode baru tidak mereset penghitung (`backend/app/Http/Controllers/UjianOnlineController.php`). | Permintaan OTP yang valid menerbitkan kode baru dan mereset penghitung; rate limit permintaan tetap berlaku. |
+| Medium | Respons OTP membedakan NIM yang tidak terdaftar/terkunci dari data yang valid, sehingga roster dapat dienumerasi (`backend/app/Http/Controllers/UjianOnlineController.php`). | Respons permintaan OTP dibuat generik; respons verifikasi menyamakan NIM tidak dikenal, terkunci, dan kode tidak valid/kedaluwarsa. |
+| Medium | Permintaan OTP baru sebelumnya menghapus token peserta yang sudah terverifikasi, sehingga pemegang QR dan NIM dapat memutus akses peserta aktif sebelum OTP baru diverifikasi (`backend/app/Http/Controllers/UjianOnlineController.php`). | Token aktif dipertahankan saat meminta OTP; rotasi token hanya berlangsung pada verifikasi yang berhasil. |
+| Medium | Kredensial demo diisi otomatis pada halaman login dan seeder berisi akun/PIN awal tetap (`src/App.tsx`, `backend/database/seeders/DatabaseSeeder.php`). | Form login kini kosong. Seeder demo menolak berjalan di luar environment `local` atau `testing`; kredensial contoh masih ada di seeder untuk pengembangan lokal. |
+| Medium | Token Sanctum tidak memiliki masa kedaluwarsa dan tidak dicabut saat kata sandi diubah atau akun dinonaktifkan (`backend/config/sanctum.php`, `backend/app/Http/Controllers`). | Masa berlaku default disetel 720 menit melalui `SANCTUM_EXPIRATION`; token dicabut saat reset password, perubahan password sendiri (kecuali token aktif), atau penonaktifan akun. Tetapkan nilai environment yang sesuai deployment. |
+| Medium | Endpoint login sebelumnya tidak memiliki pembatasan percobaan dan respons berbeda untuk akun nonaktif, sehingga memungkinkan brute force serta enumerasi status akun (`backend/routes/api.php`, `backend/app/Http/Controllers/AuthController.php`). | Login dibatasi lima permintaan per menit per alamat IP dan respons kredensial salah/nonaktif disamakan. |
+| Medium | Bearer token staf sebelumnya tersimpan di `localStorage`, sehingga tetap tersedia setelah browser ditutup dan dapat diambil oleh JavaScript yang berjalan pada origin aplikasi (`src/db.ts`). | Penyimpanan dipindahkan ke `sessionStorage`, yang dibersihkan saat sesi tab ditutup. XSS tetap dapat membaca token selama tab aktif dan masih perlu dimitigasi di frontend. |
+| Low (jalur cetak belum terhubung) | Nilai nama/alamat printer dimasukkan ke perintah shell tanpa escaping argumen di `backend/app/Services/PrintService.php`; jika dispatch dipanggil, metadata printer yang dikendalikan Admin IT dapat mengubah interpretasi perintah OS. | Placeholder printer dan file kini di-expand Symfony Process sebagai argumen aman, proses dibatasi timeout konfigurasi, dan contoh konfigurasi diperbarui. Controller cetak belum terdaftar pada route API/web, jadi jalur ini masih harus ditinjau sebelum diaktifkan. |
+| Medium (controller cetak belum terhubung) | `CetakController` belum mengunci role di dalam method dan percobaan PIN enam digit belum dibatasi (`backend/app/Http/Controllers/CetakController.php`). Jika route terhubung tanpa middleware yang tepat, role lain dapat mencoba PIN tanpa batas. | Method antrian/cetak kini hanya menerima Panitia; percobaan PIN salah dibatasi lima kali per 15 menit per IP dan akun Panitia. Route cetak tetap belum tersedia, sehingga validasi integrasi route masih diperlukan. |
+| Medium | Backup database sebelumnya disimpan sebagai ZIP tanpa enkripsi arsip (`backend/app/Services/BackupService.php`). Jika file cadangan terbaca pihak lain, dump berisi data akun dan informasi operasional dapat diekspos. | Setiap entry ZIP kini diwajibkan terenkripsi AES-256; pembuatan backup gagal tertutup jika `EBRANKAS_BACKUP_PASSWORD` belum disetel minimal 32 karakter. Direktori kerja dibatasi dan file hasil diberi izin terbatas pada sistem yang mendukung `chmod`. |
+
+Tidak ada temuan Critical yang terkonfirmasi pada pemeriksaan source ini. Severity menunjukkan kondisi sebelum perbaikan; status perbaikan belum diverifikasi lewat test/runtime.
+
+### Risiko yang masih perlu ditindaklanjuti
+
+- Backup kini memakai enkripsi ZIP AES-256, tetapi `EBRANKAS_BACKUP_PASSWORD` harus dikonfigurasi dan dicadangkan terpisah secara aman; kehilangan rahasia ini membuat backup tidak dapat dipulihkan. Verifikasi dukungan AES-256 pada libzip, ACL direktori backup, akses salinan, serta retensi pada deployment.
+- Arsip backup lama yang dibuat sebelum perubahan tetap tidak terenkripsi; identifikasi lalu amankan atau hapus sesuai kebijakan retensi setelah memastikan salinan pemulihan yang diperlukan.
+- Frontend kini menyimpan bearer token di `sessionStorage` (`src/db.ts`), sehingga token tidak bertahan setelah sesi tab browser ditutup. Token masih dapat dicuri JavaScript saat tab aktif jika terjadi XSS; mitigasi XSS dan konfigurasi CSP perlu divalidasi pada frontend hosting.
+- Endpoint permintaan OTP memiliki pembatasan per sesi/NIM dan per IP, tetapi pemegang QR masih dapat memicu pengiriman email ke peserta roster atau menghabiskan kuota permintaan peserta. Verifikasi batas provider, pemantauan, dan kontrol penyalahgunaan email sebelum produksi.
+- Controller pencetakan serta pemanggilan `/cetak/{id}` belum terhubung ke route API/web. Controller kini membatasi role ke Panitia dan percobaan PIN, tetapi jalur itu belum tervalidasi sebagai kontrol aktif sampai route diintegrasikan. Sebelum route diaktifkan, verifikasi middleware autentikasi, audit akses, serta ACL dan penghapusan/retensi file spool; spool berisi PDF plaintext.
+- Periksa `.env` produksi agar `APP_DEBUG=false`, kunci `APP_KEY` kuat dan rahasia, `SANCTUM_EXPIRATION` sesuai kebijakan, serta kredensial demo tidak pernah digunakan. `.env` aktif dan konfigurasi server tidak diperiksa.
+- PDF ujian disimpan melalui Laravel `Crypt` pada disk privat, dengan validasi PDF dan batas 10 MB. Keamanan enkripsi tetap bergantung pada kerahasiaan/rotasi `APP_KEY` dan izin storage; hal itu perlu diverifikasi pada deployment.
+- Tidak ditemukan bukti SQL injection atau sink XSS langsung pada jalur source yang ditinjau. API memakai bearer Sanctum dan middleware role; route web memakai perlindungan CSRF Laravel. Kesimpulan ini terbatas pada source yang diperiksa, bukan pengujian dinamis.
+
+### Cakupan
+
+Audit meninjau autentikasi dan otorisasi role, alur OTP/peserta, upload dan penyimpanan PDF, token Sanctum, perubahan profil/password, manajemen pengguna, query database, serta route API/web terkait. Tidak diperiksa: konfigurasi `.env` aktif, database dan akun aktual, backup hasil produksi, server/proxy/TLS, email provider, browser/runtime, log, dependency dengan scanner, atau endpoint deployment.

@@ -9,11 +9,14 @@ use Illuminate\Support\Facades\Hash;
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seed data awal SIKASA FEB sesuai skema produksi.
-     * Menjadi acuan uji untuk semua peran & alur kerja.
+     * Data demo lokal untuk pengembangan dan pengujian, bukan data produksi.
      */
     public function run(): void
     {
+        if (! app()->environment('local', 'testing')) {
+            throw new \RuntimeException('DatabaseSeeder hanya boleh dijalankan pada environment local atau testing.');
+        }
+
         $now = now();
 
         // 1) USERS — 4 dosen, 1 kaprodi, 1 panitia/TU, 1 admin IT
