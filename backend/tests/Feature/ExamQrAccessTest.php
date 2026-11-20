@@ -152,7 +152,7 @@ class ExamQrAccessTest extends TestCase
             'semester' => 1,
             'tahun_ajaran' => '2026/2027',
         ]);
-        $pdf = "%PDF-1.4\nSIKASA UPLOAD TEST\n%%EOF";
+        $pdf = "%PDF-1.4\nSIAGA UPLOAD TEST\n%%EOF";
         $file = UploadedFile::fake()->createWithContent('soal-uts.pdf', $pdf);
 
         $response = $this->actingAs($dosen, 'sanctum')->post('/api/soal', [
@@ -191,7 +191,7 @@ class ExamQrAccessTest extends TestCase
             'tahun_ajaran' => '2026/2027',
         ]);
         $path = 'soal/test/'.Str::random(16).'.pdf';
-        $contents = "%PDF-1.4\nSIKASA TEST PDF\n%%EOF";
+        $contents = "%PDF-1.4\nSIAGA TEST PDF\n%%EOF";
         Storage::disk('local')->put($path, Crypt::encryptString($contents));
         $soal = BankSoal::create([
             'user_id' => $user->id,

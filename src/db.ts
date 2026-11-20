@@ -2,7 +2,7 @@
 
 //
 
-// SIKASA FEB (Sistem Informasi Keamanan Soal Akademik) — Lapisan Data
+// SIAGA FEB (Sistem Akademik Garda Aman) — Lapisan Data
 // (Klien API Laravel)
 
 //
@@ -380,7 +380,7 @@ async function apiFetch<T>(
     throw new ApiError(
       0,
 
-      "Tidak dapat terhubung ke server SIKASA FEB. Pastikan layanan backend berjalan.",
+      "Tidak dapat terhubung ke server SIAGA FEB. Pastikan layanan backend berjalan.",
     )
   }
 

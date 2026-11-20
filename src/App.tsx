@@ -16,10 +16,8 @@ import { enableNotificationSounds, playNotificationSound } from "./notificationS
 const StudentAccess = lazy(() => import("./StudentAccess"))
 import {
   APP_NAMA,
-  APP_SINGKATAN,
   APP_TAGLINE,
   BARIS_HAK_CIPTA,
-  INSTANSI_KOP,
   JUDUL_DOKUMEN,
 } from "./brand"
 import {
@@ -596,36 +594,18 @@ function Sidebar({
         />
       )}
       <aside
-        className={`sikasa-sidebar fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-black/5 bg-[#f4f1ea] text-slate-800 transition-transform duration-300 lg:w-72 lg:translate-x-0 ${
+        className={`siaga-sidebar fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-black/5 bg-[#f4f1ea] text-slate-800 transition-transform duration-300 lg:w-72 lg:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="sikasa-sidebar-brand flex min-h-20 items-center gap-2.5 border-b border-black/5 px-5">
-          <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-[#202126] text-[#f5cf25] shadow-lg shadow-black/10">
-            <span
-              className="font-display text-[11px] font-extrabold tracking-tight lg:hidden"
-              aria-hidden="true"
-            >
-              <Icon name="lock" size={23} />
-            </span>
-            <span
-              className="font-display hidden text-[11px] font-extrabold tracking-tight lg:block"
-              title={APP_TAGLINE}
-            >
-              {APP_SINGKATAN.slice(0, 3)}
-            </span>
-          </div>
-          <div className="sikasa-brand-copy min-w-0 flex-1">
-            <div className="font-display text-[14px] font-bold leading-tight tracking-normal">
-              {APP_NAMA}
-            </div>
-            <div
-              className="sikasa-institution mt-1 text-[8px] font-semibold leading-[1.35] tracking-[0.08em] text-slate-400"
-              title={APP_TAGLINE}
-            >
-              {INSTANSI_KOP}
-            </div>
-          </div>
+        <div className="siaga-sidebar-brand flex min-h-20 items-center border-b border-black/5 px-5">
+          <img
+            src="/Logo/Logo%20Sidebar.svg"
+            alt={`${APP_NAMA} — ${APP_TAGLINE}`}
+            className="h-auto w-[min(100%,13rem)] object-contain"
+            width={432}
+            height={156}
+          />
           <button
             className="ml-auto rounded-lg p-2 text-slate-500 lg:hidden"
             onClick={onClose}
@@ -644,7 +624,7 @@ function Sidebar({
                 aria-label={item.label}
                 title={item.label}
                 key={item.label}
-                className={`sikasa-nav-item group relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition ${
+                className={`siaga-nav-item group relative flex w-full items-center gap-3 rounded-2xl px-3.5 py-3 text-left text-sm font-semibold transition ${
                   active === item.label
                     ? "is-active bg-[#202126] text-white shadow-sm"
                     : "text-slate-500 hover:bg-white hover:text-slate-900"
@@ -1054,7 +1034,7 @@ function LoginPage({
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#fbf9f0] p-4 sm:p-6 lg:h-screen lg:overflow-hidden">
       <div className="flex w-full max-w-5xl overflow-hidden rounded-[34px] bg-white shadow-[0_30px_80px_-40px_rgba(15,23,42,0.45)] lg:h-[calc(100vh-3rem)]">
-        <div className="grid flex-1 lg:grid-cols-[0.92fr_1.08fr]">
+        <div className="grid min-h-0 flex-1 lg:grid-cols-[0.92fr_1.08fr]">
           {/* ---------------------------------------------------------- */}
           {/* Panel kiri: kartu galeri bertema gelap-emas + carousel     */}
           {/* ---------------------------------------------------------- */}
@@ -1194,9 +1174,9 @@ function LoginPage({
           {/* ---------------------------------------------------------- */}
           {/* Panel kanan: form login ala kartu modern                   */}
           {/* ---------------------------------------------------------- */}
-          <section className="flex items-center justify-center px-6 py-6 sm:px-10 lg:py-8">
+          <section className="flex min-h-0 items-start justify-center overflow-y-auto overscroll-contain px-6 py-5 sm:px-10 lg:items-stretch lg:px-8 lg:py-5">
             <form
-              className="w-full max-w-md"
+              className="my-auto w-full max-w-md"
               onSubmit={async (event) => {
                 event.preventDefault()
                 setSubmitting(true)
@@ -1207,29 +1187,27 @@ function LoginPage({
                 setSubmitting(false)
               }}
             >
-              <div className="mb-8 flex items-center justify-between gap-4 lg:hidden">
-                <div className="flex items-center gap-2.5">
-                  <div className="grid size-9 place-items-center rounded-xl bg-[#202126] text-[#f5cf25]">
-                    <Icon name="lock" size={18} />
+              <div className="mb-4 grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] items-start gap-3 sm:mb-5 sm:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] sm:gap-5">
+                <div className="min-w-0">
+                  <div className="font-display text-[22px] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[28px]">
+                    Hai, {roleSapaan[selectedRole]}
                   </div>
-                  <div className="font-display text-[15px] font-extrabold tracking-tight text-slate-900">
-                    {APP_NAMA}
-                  </div>
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                    {APP_TAGLINE}
+                  <p className="mt-1 text-xs leading-relaxed text-slate-500 sm:text-[13px]">
+                    Kelola soal ujian dengan distribusi aman melalui QR Code.
+                  </p>
+                  <div className="mt-2.5 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400 sm:mt-3 sm:text-[11px] sm:tracking-[0.16em]">
+                    Masuk sebagai
                   </div>
                 </div>
+                <img
+                  src="/Logo/Logo%20Login.svg"
+                  alt={`${APP_NAMA} — ${APP_TAGLINE}`}
+                  className="ml-auto h-auto w-full max-w-[10rem] object-contain"
+                  width={432}
+                  height={156}
+                />
               </div>
-              <div className="font-display text-[28px] font-extrabold leading-tight tracking-tight text-slate-900 sm:text-[34px]">
-                Hai, {roleSapaan[selectedRole]}
-              </div>
-              <p className="mt-1.5 text-[13px] text-slate-500">
-                Kelola soal ujian dengan distribusi aman melalui QR Code.
-              </p>
-              <div className="mt-5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                Masuk sebagai
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {(Object.keys(roleMeta) as UserRole[]).map((role) => (
                   <button
                     className={`rounded-full border px-3.5 py-1.5 text-xs font-bold transition ${
@@ -2470,7 +2448,7 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
       pdf.setFont("helvetica", "bold")
       pdf.setFontSize(18)
-      pdf.text("SIKASA · AKSES SOAL UJIAN", 105, 24, { align: "center" })
+      pdf.text("SIAGA · AKSES SOAL UJIAN", 105, 24, { align: "center" })
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(12)
       pdf.text(item.nama_ujian || item.judul, 105, 36, { align: "center", maxWidth: 175 })
@@ -2484,7 +2462,7 @@ function SesiUjianPage({ showToast }: { showToast: (message: string) => void }) 
       pdf.setFont("helvetica", "normal")
       pdf.setFontSize(10)
       pdf.text("Verifikasi dilakukan menggunakan roster dan kode OTP email. Jawaban ujian ditulis pada lembar kertas.", 105, 193, { align: "center", maxWidth: 170 })
-      pdf.save(`qr-sikasa-${item.id}.pdf`)
+      pdf.save(`qr-siaga-${item.id}.pdf`)
       showToast("QR sesi berhasil disimpan sebagai PDF.")
     } catch (error) {
       showToast(error instanceof Error ? error.message : "PDF QR gagal dibuat.")
@@ -3507,7 +3485,7 @@ function UsersPage({ showToast }: { showToast: (message: string) => void }) {
     if (user.aktif) {
       const confirmed = await ask({
         title: "Nonaktifkan pengguna?",
-        description: `Akun ${user.nama} tidak dapat digunakan untuk masuk ke SIKASA sampai diaktifkan kembali.`,
+        description: `Akun ${user.nama} tidak dapat digunakan untuk masuk ke SIAGA sampai diaktifkan kembali.`,
         confirmLabel: "Nonaktifkan akun",
         tone: "warning",
       })
@@ -5459,7 +5437,7 @@ function AppShell() {
     )
 
   return (
-    <div className="sikasa-workspace min-h-screen bg-[#e8e9e9] text-slate-800">
+    <div className="siaga-workspace min-h-screen bg-[#e8e9e9] text-slate-800">
       <Sidebar
         active={active}
         onClose={() => setSidebarOpen(false)}
@@ -5474,8 +5452,8 @@ function AppShell() {
         userName={currentUser?.nama ?? "Pengguna"}
       />
 
-      <main id="main-content" className="sikasa-main min-h-screen bg-[#f4f1ea] lg:ml-72">
-        <header className="sikasa-topbar sticky top-0 z-20 flex min-h-24 items-center border-b border-black/5 bg-[#f4f1ea]/90 px-5 py-4 backdrop-blur-md sm:px-8">
+      <main id="main-content" className="siaga-main min-h-screen bg-[#f4f1ea] lg:ml-72">
+        <header className="siaga-topbar sticky top-0 z-20 flex min-h-24 items-center border-b border-black/5 bg-[#f4f1ea]/90 px-5 py-4 backdrop-blur-md sm:px-8">
           <button
             className="mr-3 rounded-xl p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
             onClick={() => setSidebarOpen(true)}
@@ -5525,7 +5503,7 @@ function AppShell() {
                 )}
               </button>
               {notifOpen && (
-                <div className="sikasa-dropdown-panel absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                <div className="siaga-dropdown-panel absolute right-0 z-40 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
                   <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                     <span className="text-xs font-bold text-slate-700">
                       Notifikasi
@@ -5589,7 +5567,7 @@ function AppShell() {
         </header>
 
         <div
-          className="sikasa-page animate-page mx-auto max-w-[1600px] p-5 sm:p-8 lg:px-10 lg:pt-8"
+          className="siaga-page animate-page mx-auto max-w-[1600px] p-5 sm:p-8 lg:px-10 lg:pt-8"
           key={active}
         >
           {active === "Dashboard" && (
@@ -5658,7 +5636,7 @@ export default function App() {
 
   const studentRoute = window.location.hash.match(/^#\/akses\/([^/?#]+)/)
   const studentToken = studentRoute?.[1] ? decodeURIComponent(studentRoute[1]) : null
-  if (studentToken) return <Suspense fallback={<main className="student-shell"><header className="student-brand"><span className="student-mark">S</span><span><b>SIKASA</b><small>Sistem Informasi Keamanan Soal Akademik · FEB</small></span></header><div aria-label="Memuat halaman akses soal" role="status" className="animate-pulse space-y-4"><SkeletonBlock className="h-8 w-56" /><SkeletonBlock className="h-40 w-full rounded-2xl" /><SkeletonBlock className="h-28 w-full rounded-2xl" /></div></main>}><StudentAccess token={studentToken} /></Suspense>
+  if (studentToken) return <Suspense fallback={<main className="student-shell"><header className="student-brand"><img className="student-mark" src="/Logo/favicon_io/android-chrome-192x192.png" alt="" /><span><b>SIAGA</b><small>Sistem Akademik Garda Aman · FEB</small></span></header><div aria-label="Memuat halaman akses soal" role="status" className="animate-pulse space-y-4"><SkeletonBlock className="h-8 w-56" /><SkeletonBlock className="h-40 w-full rounded-2xl" /><SkeletonBlock className="h-28 w-full rounded-2xl" /></div></main>}><StudentAccess token={studentToken} /></Suspense>
 
   return (
     <DbProvider>

@@ -1,6 +1,6 @@
-# SIKASA — Sistem Informasi Keamanan Soal Akademik
+# SIAGA — Sistem Akademik Garda Aman
 
-SIKASA mengamankan file soal ujian dan mendistribusikannya melalui QR Code. Mahasiswa membaca PDF dari browser dan menulis jawaban pada lembar kertas. Sistem ini **bukan CBT**: tidak ada pengerjaan soal atau penilaian online.
+SIAGA mengamankan file soal ujian dan mendistribusikannya melalui QR Code. Mahasiswa membaca PDF dari browser dan menulis jawaban pada lembar kertas. Sistem ini **bukan CBT**: tidak ada pengerjaan soal atau penilaian online.
 
 ## Stack
 
@@ -10,6 +10,12 @@ SIKASA mengamankan file soal ujian dan mendistribusikannya melalui QR Code. Maha
 - Autentikasi staf: Laravel Sanctum
 - PDF: AES-256 melalui Laravel Crypt, disimpan di private storage
 - Viewer mahasiswa: PDF.js
+
+## Identitas aplikasi dan login
+
+Nama aplikasi adalah **SIAGA — Sistem Akademik Garda Aman**. Logo untuk sidebar dan halaman login, serta favicon untuk browser dan perangkat mobile, berada di `public/Logo/`. Identitas aplikasi juga digunakan pada halaman akses mahasiswa, judul tab, dan dokumen yang dihasilkan sistem.
+
+Pada halaman login, staf memilih peran yang sesuai dengan akunnya. Backend memeriksa kecocokan peran bersama email dan kata sandi; akun dengan kredensial benar tetapi peran yang dipilih tidak sesuai tetap ditolak. Pilihan **Admin** di antarmuka dipetakan ke role backend `admin_it`. Mahasiswa mengakses soal melalui QR dan OTP, bukan melalui login staf.
 
 ## Alur ujian
 
@@ -44,7 +50,7 @@ cd backend
 Copy-Item .env.example .env
 composer install
 php artisan key:generate
-# Atur koneksi MySQL/MariaDB, APP_URL, SMTP, dan SIKASA_FRONTEND_URL di .env
+# Atur koneksi MySQL/MariaDB, APP_URL, SMTP, dan SIAGA_FRONTEND_URL di .env
 # Jika memakai fitur backup, isi EBRANKAS_BACKUP_PASSWORD dengan rahasia acak minimal 32 karakter.
 php artisan migrate --seed
 php artisan serve
@@ -96,7 +102,7 @@ Pemeriksaan source-only terakhir: 19 November 2026. Perubahan di bawah merupakan
 | Medium | Permintaan OTP baru sebelumnya menghapus token peserta yang sudah terverifikasi, sehingga pemegang QR dan NIM dapat memutus akses peserta aktif sebelum OTP baru diverifikasi (`backend/app/Http/Controllers/UjianOnlineController.php`). | Token aktif dipertahankan saat meminta OTP; rotasi token hanya berlangsung pada verifikasi yang berhasil. |
 | Medium | Kredensial demo diisi otomatis pada halaman login dan seeder berisi akun/PIN awal tetap (`src/App.tsx`, `backend/database/seeders/DatabaseSeeder.php`). | Form login kini kosong. Seeder demo menolak berjalan di luar environment `local` atau `testing`; kredensial contoh masih ada di seeder untuk pengembangan lokal. |
 | Medium | Token Sanctum tidak memiliki masa kedaluwarsa dan tidak dicabut saat kata sandi diubah atau akun dinonaktifkan (`backend/config/sanctum.php`, `backend/app/Http/Controllers`). | Masa berlaku default disetel 720 menit melalui `SANCTUM_EXPIRATION`; token dicabut saat reset password, perubahan password sendiri (kecuali token aktif), atau penonaktifan akun. Tetapkan nilai environment yang sesuai deployment. |
-| Medium | Endpoint login sebelumnya tidak memiliki pembatasan percobaan dan respons berbeda untuk akun nonaktif, sehingga memungkinkan brute force serta enumerasi status akun (`backend/routes/api.php`, `backend/app/Http/Controllers/AuthController.php`). | Login dibatasi lima permintaan per menit per alamat IP dan respons kredensial salah/nonaktif disamakan. |
+| Medium | Endpoint login sebelumnya tidak memiliki pembatasan percobaan dan respons berbeda untuk akun nonaktif, sehingga memungkinkan brute force serta enumerasi status akun (`backend/routes/api.php`, `backend/app/Http/Controllers/AuthController.php`). | Login dibatasi lima permintaan per menit per alamat IP, respons kredensial salah/nonaktif disamakan, dan role yang dipilih pada halaman login wajib cocok dengan role akun di backend. |
 | Medium | Bearer token staf sebelumnya tersimpan di `localStorage`, sehingga tetap tersedia setelah browser ditutup dan dapat diambil oleh JavaScript yang berjalan pada origin aplikasi (`src/db.ts`). | Penyimpanan dipindahkan ke `sessionStorage`, yang dibersihkan saat sesi tab ditutup. XSS tetap dapat membaca token selama tab aktif dan masih perlu dimitigasi di frontend. |
 | Low (jalur cetak belum terhubung) | Nilai nama/alamat printer dimasukkan ke perintah shell tanpa escaping argumen di `backend/app/Services/PrintService.php`; jika dispatch dipanggil, metadata printer yang dikendalikan Admin IT dapat mengubah interpretasi perintah OS. | Placeholder printer dan file kini di-expand Symfony Process sebagai argumen aman, proses dibatasi timeout konfigurasi, dan contoh konfigurasi diperbarui. Controller cetak belum terdaftar pada route API/web, jadi jalur ini masih harus ditinjau sebelum diaktifkan. |
 | Medium (controller cetak belum terhubung) | `CetakController` belum mengunci role di dalam method dan percobaan PIN enam digit belum dibatasi (`backend/app/Http/Controllers/CetakController.php`). Jika route terhubung tanpa middleware yang tepat, role lain dapat mencoba PIN tanpa batas. | Method antrian/cetak kini hanya menerima Panitia; percobaan PIN salah dibatasi lima kali per 15 menit per IP dan akun Panitia. Route cetak tetap belum tersedia, sehingga validasi integrasi route masih diperlukan. |

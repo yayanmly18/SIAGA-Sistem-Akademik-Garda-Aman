@@ -250,7 +250,7 @@ export default function StudentAccess({ token }: Props) {
 
   return (
     <main className={`student-shell${pdf ? " student-shell-viewer" : ""}`}>
-      <header className="student-brand"><span className="student-mark">S</span><span><b>SIKASA</b><small>Sistem Informasi Keamanan Soal Akademik · FEB</small></span></header>
+      <header className="student-brand"><img className="student-mark" src="/Logo/favicon_io/android-chrome-192x192.png" alt="" /><span><b>SIAGA</b><small>Sistem Akademik Garda Aman · FEB</small></span></header>
       <h1>Akses Soal Ujian</h1>
       {loadingExam && <section aria-label="Memuat informasi sesi" role="status" className="animate-pulse rounded-[18px] border border-slate-200 bg-white p-5"><div className="h-5 w-2/5 rounded bg-slate-200"/><div className="mt-3 h-4 w-3/5 rounded bg-slate-200"/><div className="mt-5 grid gap-3 sm:grid-cols-2">{[0, 1, 2, 3, 4, 5].map((item) => <div className="h-4 rounded bg-slate-100" key={item}/>)}</div><div className="mt-5 h-10 rounded-lg bg-slate-100"/></section>}
       {exam && <section className="exam-card">

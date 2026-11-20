@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes — SIKASA FEB (Sistem Informasi Keamanan Soal Akademik)
+| API Routes — SIAGA FEB (Sistem Akademik Garda Aman)
 |--------------------------------------------------------------------------
 | Autentikasi: Laravel Sanctum (Bearer Token). Setiap peran dibatasi dengan
 | middleware 'role:...' (CheckRole).

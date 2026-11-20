@@ -1,7 +1,7 @@
 {
-  "title": "SIKASA FEB (Sistem Informasi Keamanan Soal Akademik)",
-  "description": "SIKASA FEB — Sistem Informasi Keamanan Soal Akademik Fakultas Ekonomi dan Bisnis Universitas Singaperbangsa Karawang.",
-  "applicationName": "SIKASA FEB",
+  "title": "SIAGA FEB (Sistem Akademik Garda Aman)",
+  "description": "SIAGA FEB — Sistem Akademik Garda Aman Fakultas Ekonomi dan Bisnis Universitas Singaperbangsa Karawang.",
+  "applicationName": "SIAGA FEB",
   "language": "id",
   "robots": {
     "index": false

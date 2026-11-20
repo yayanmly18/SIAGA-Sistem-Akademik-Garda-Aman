@@ -19,8 +19,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>SIKASA FEB</h1>
-        <div class="sub">Sistem Informasi Keamanan Soal Akademik</div>
+        <h1>SIAGA FEB</h1>
+        <div class="sub">Sistem Akademik Garda Aman</div>
         <div class="sub">Berita Acara Cetak Naskah Soal Ujian</div>
     </div>
 
@@ -40,7 +40,7 @@
     </table>
 
     <p style="margin-top: 22px; color:#374151;">
-        Dokumen ini dicetak langsung ke printer ruang Kaprodi melalui sistem SIKASA FEB.
+        Dokumen ini dicetak langsung ke printer ruang Kaprodi melalui sistem SIAGA FEB.
         Naskah soal tidak disimpan pada perangkat petugas. Setiap percetakan tercatat
         pada log audit sistem (identitas, waktu, IP, dan jumlah salinan).
     </p>

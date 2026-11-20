@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="utf-8">
-    <title>Berita Acara Ujian - SIKASA FEB</title>
+    <title>Berita Acara Ujian - SIAGA FEB</title>
     <style>
         @page { margin: 20mm 16mm; }
         body { font-family: DejaVu Sans, sans-serif; color: #1f2937; font-size: 11px; }
@@ -28,8 +28,8 @@
 </head>
 <body>
     <div class="header">
-        <h1>SIKASA FEB</h1>
-        <div class="sub">Sistem Informasi Keamanan Soal Akademik</div>
+        <h1>SIAGA FEB</h1>
+        <div class="sub">Sistem Akademik Garda Aman</div>
         <div class="sub">Berita Acara Pengumpulan &amp; Percetakan Naskah Soal Ujian</div>
     </div>
 
@@ -114,7 +114,7 @@
     </table>
 
     <div class="footer">
-        Dokumen dibuat otomatis oleh SIKASA FEB · {{ $dibuatPada->translatedFormat('d F Y H:i') }} · Rahasia
+        Dokumen dibuat otomatis oleh SIAGA FEB · {{ $dibuatPada->translatedFormat('d F Y H:i') }} · Rahasia
     </div>
 </body>
 </html>

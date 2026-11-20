@@ -116,121 +116,96 @@
   animation: page-enter 0.4s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
-/* Tema workspace SIKASA: identitas FEB dengan emas, charcoal, dan warm white. */
-.sikasa-workspace {
-  --sikasa-ink: #26241d;
-  --sikasa-ink-soft: #393529;
-  --sikasa-green: #806100;
-  --sikasa-lime: #f5cf25;
-  --sikasa-canvas: #fbf9f0;
-  --sikasa-line: #e9e1c4;
-  --sikasa-muted: #706b5d;
+/* Tema workspace SIAGA: identitas FEB dengan emas, charcoal, dan warm white. */
+.siaga-workspace {
+  --siaga-ink: #26241d;
+  --siaga-ink-soft: #393529;
+  --siaga-green: #806100;
+  --siaga-lime: #f5cf25;
+  --siaga-canvas: #fbf9f0;
+  --siaga-line: #e9e1c4;
+  --siaga-muted: #706b5d;
   --feb-gold: #f2c400;
   --feb-gold-soft: #fff7d6;
   --feb-gold-line: #ead88a;
   --feb-gold-text: #705700;
-  background: var(--sikasa-canvas) !important;
+  background: var(--siaga-canvas) !important;
   color: #29271f;
 }
 
-.sikasa-sidebar {
+.siaga-sidebar {
   width: 18rem !important;
   border-color: #e0b300 !important;
   background: linear-gradient(180deg, #ffdc45 0%, #f2c400 58%, #e8b900 100%) !important;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
   box-shadow: 12px 0 36px rgb(120 90 0 / 12%);
 }
 
 /* Scrollbar dokumen dan daftar menu dibuat tipis agar tidak tampak seperti
    scrollbar sistem yang tebal di sisi kanan dashboard. */
-body:has(.sikasa-workspace) {
+body:has(.siaga-workspace) {
   scrollbar-color: #bdcdc4 transparent;
   scrollbar-width: thin;
 }
 
-body:has(.sikasa-workspace)::-webkit-scrollbar {
+body:has(.siaga-workspace)::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
-body:has(.sikasa-workspace)::-webkit-scrollbar-track {
+body:has(.siaga-workspace)::-webkit-scrollbar-track {
   background: transparent;
 }
 
-body:has(.sikasa-workspace)::-webkit-scrollbar-thumb {
+body:has(.siaga-workspace)::-webkit-scrollbar-thumb {
   border: 3px solid transparent;
   border-radius: 999px;
   background: #bdcdc4;
   background-clip: padding-box;
 }
 
-body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
+body:has(.siaga-workspace)::-webkit-scrollbar-thumb:hover {
   background: #73988a;
   background-clip: padding-box;
 }
 
-.sikasa-sidebar > div:nth-child(2) {
+.siaga-sidebar > div:nth-child(2) {
   overscroll-behavior: contain;
   scrollbar-color: #58776d transparent;
   scrollbar-width: thin;
 }
 
-.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar {
+.siaga-sidebar > div:nth-child(2)::-webkit-scrollbar {
   width: 6px;
 }
 
-.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar-track {
+.siaga-sidebar > div:nth-child(2)::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar-thumb {
+.siaga-sidebar > div:nth-child(2)::-webkit-scrollbar-thumb {
   border-radius: 999px;
   background: rgb(205 227 214 / 26%);
 }
 
-.sikasa-sidebar > div:nth-child(2)::-webkit-scrollbar-thumb:hover {
+.siaga-sidebar > div:nth-child(2)::-webkit-scrollbar-thumb:hover {
   background: #f5cf25;
 }
 
-.sikasa-sidebar-brand {
+.siaga-sidebar-brand {
   border-color: rgb(112 87 0 / 18%) !important;
 }
 
-.sikasa-sidebar-brand > div:first-child {
-  background: var(--sikasa-ink) !important;
-  color: var(--sikasa-lime) !important;
-  box-shadow: none !important;
-}
-
-.sikasa-sidebar-brand .font-display,
-.sikasa-sidebar-brand [class*="tracking-[0.2em]"] {
-  color: var(--sikasa-ink) !important;
-}
-
-.sikasa-sidebar-brand > div:first-child .font-display {
-  color: var(--sikasa-lime) !important;
-}
-
-.sikasa-brand-copy {
-  max-width: 100%;
-}
-
-.sikasa-institution {
-  max-width: 190px;
-  overflow-wrap: anywhere;
-  color: #5d4a08 !important;
-}
-
-.sikasa-sidebar > div:nth-child(2) > div:first-child,
-.sikasa-sidebar > div:nth-child(2) nav button {
+.siaga-sidebar > div:nth-child(2) > div:first-child,
+.siaga-sidebar > div:nth-child(2) nav button {
   color: #51430d !important;
 }
 
-.sikasa-sidebar > div:nth-child(2) nav button.is-active {
+.siaga-sidebar > div:nth-child(2) nav button.is-active {
   color: #fff8df !important;
 }
 
-.sikasa-sidebar nav button {
+.siaga-sidebar nav button {
   min-height: 46px;
   border: 1px solid transparent;
   border-radius: 14px !important;
@@ -241,123 +216,123 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
     transform 160ms ease;
 }
 
-.sikasa-sidebar nav button:hover {
+.siaga-sidebar nav button:hover {
   border-color: rgb(112 87 0 / 18%);
   background: rgb(255 255 255 / 34%) !important;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-sidebar nav button.is-active {
-  border-color: var(--sikasa-ink) !important;
-  background: var(--sikasa-ink) !important;
+.siaga-sidebar nav button.is-active {
+  border-color: var(--siaga-ink) !important;
+  background: var(--siaga-ink) !important;
   color: #fff8df !important;
   box-shadow: 0 8px 20px rgb(112 87 0 / 22%);
 }
 
-.sikasa-sidebar nav button.is-active > span:first-child {
-  color: var(--sikasa-lime) !important;
+.siaga-sidebar nav button.is-active > span:first-child {
+  color: var(--siaga-lime) !important;
 }
 
-.sikasa-sidebar nav button > span:first-child {
+.siaga-sidebar nav button > span:first-child {
   color: #6a5200 !important;
 }
 
-.sikasa-sidebar > div:last-child > div {
+.siaga-sidebar > div:last-child > div {
   border-color: rgb(112 87 0 / 18%) !important;
   background: rgb(255 255 255 / 28%) !important;
 }
 
-.sikasa-sidebar > div:last-child > div > div,
-.sikasa-sidebar > div:last-child > div p {
+.siaga-sidebar > div:last-child > div > div,
+.siaga-sidebar > div:last-child > div p {
   color: #51430d !important;
 }
 
-.sikasa-sidebar > div:last-child > div > div {
+.siaga-sidebar > div:last-child > div > div {
   color: #166534 !important;
 }
 
-.sikasa-sidebar > div:last-child > div > div > span > span:first-child {
+.siaga-sidebar > div:last-child > div > div > span > span:first-child {
   background-color: #22c55e !important;
 }
 
-.sikasa-sidebar > div:last-child > div > div > span > span:last-child {
+.siaga-sidebar > div:last-child > div > div > span > span:last-child {
   background-color: #16a34a !important;
 }
 
-.sikasa-sidebar > div:last-child > button {
+.siaga-sidebar > div:last-child > button {
   color: #51430d;
 }
 
-.sikasa-sidebar > div:last-child > button:hover {
+.siaga-sidebar > div:last-child > button:hover {
   background: rgb(255 255 255 / 34%) !important;
 }
 
-.sikasa-sidebar > div:last-child > button > div:first-child {
-  background: var(--sikasa-ink) !important;
-  color: var(--sikasa-lime) !important;
+.siaga-sidebar > div:last-child > button > div:first-child {
+  background: var(--siaga-ink) !important;
+  color: var(--siaga-lime) !important;
 }
 
-.sikasa-sidebar > div:last-child > button:not([aria-label="Keluar"]) > div:nth-child(2) > div {
+.siaga-sidebar > div:last-child > button:not([aria-label="Keluar"]) > div:nth-child(2) > div {
   color: #51430d !important;
 }
 
-.sikasa-sidebar > div:last-child > button[aria-label="Keluar"] {
+.siaga-sidebar > div:last-child > button[aria-label="Keluar"] {
   color: #51430d !important;
 }
 
-.sikasa-sidebar > div:last-child > button[aria-label="Keluar"]:hover {
+.siaga-sidebar > div:last-child > button[aria-label="Keluar"]:hover {
   background: rgb(255 255 255 / 8%) !important;
 }
 
-.sikasa-main {
+.siaga-main {
   margin-left: 18rem !important;
   background:
     radial-gradient(ellipse at 95% 0%, rgb(245 207 37 / 15%), transparent 28rem),
-    var(--sikasa-canvas) !important;
+    var(--siaga-canvas) !important;
   color: #29271f;
 }
 
-.sikasa-topbar {
+.siaga-topbar {
   min-height: 5.5rem;
-  border-color: var(--sikasa-line) !important;
+  border-color: var(--siaga-line) !important;
   background: rgb(255 254 249 / 94%) !important;
   box-shadow: 0 8px 24px rgb(89 71 10 / 5%);
 }
 
-.sikasa-topbar > div:first-of-type > div:first-child {
+.siaga-topbar > div:first-of-type > div:first-child {
   letter-spacing: -0.035em;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-topbar > div:first-of-type > p {
-  color: var(--sikasa-muted) !important;
+.siaga-topbar > div:first-of-type > p {
+  color: var(--siaga-muted) !important;
 }
 
-.sikasa-topbar > div:nth-of-type(2) > div:first-child {
-  background: var(--sikasa-ink) !important;
-  color: var(--sikasa-lime) !important;
+.siaga-topbar > div:nth-of-type(2) > div:first-child {
+  background: var(--siaga-ink) !important;
+  color: var(--siaga-lime) !important;
 }
 
-.sikasa-topbar > div:nth-of-type(2) .font-display,
-.sikasa-topbar > div:nth-of-type(2) .text-slate-400 {
-  color: var(--sikasa-ink) !important;
+.siaga-topbar > div:nth-of-type(2) .font-display,
+.siaga-topbar > div:nth-of-type(2) .text-slate-400 {
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-topbar button,
-.sikasa-topbar > div > div[class*="rounded-full"] {
-  border: 1px solid var(--sikasa-line);
+.siaga-topbar button,
+.siaga-topbar > div > div[class*="rounded-full"] {
+  border: 1px solid var(--siaga-line);
   box-shadow: 0 2px 8px rgb(89 71 10 / 5%);
 }
 
-.sikasa-topbar > div:last-child > div[class*="bg-[#202126]"] {
-  border-color: var(--sikasa-ink) !important;
-  background: var(--sikasa-ink) !important;
+.siaga-topbar > div:last-child > div[class*="bg-[#202126]"] {
+  border-color: var(--siaga-ink) !important;
+  background: var(--siaga-ink) !important;
   color: #f4f8f5 !important;
 }
 
-.sikasa-dropdown-panel {
+.siaga-dropdown-panel {
   width: min(20rem, calc(100vw - 2rem));
-  border-color: var(--sikasa-line) !important;
+  border-color: var(--siaga-line) !important;
   border-radius: 16px !important;
   background: #fff !important;
   box-shadow: 0 20px 50px rgb(51 43 15 / 16%) !important;
@@ -365,12 +340,12 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
   animation: dropdown-enter 150ms ease-out both;
 }
 
-.sikasa-dropdown-panel > div:first-child {
-  border-color: var(--sikasa-line) !important;
+.siaga-dropdown-panel > div:first-child {
+  border-color: var(--siaga-line) !important;
   background: #fffcf1;
 }
 
-.sikasa-dropdown-panel button:hover {
+.siaga-dropdown-panel button:hover {
   background-color: #fff8dd !important;
 }
 
@@ -386,37 +361,37 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
   }
 }
 
-.sikasa-page {
+.siaga-page {
   min-height: calc(100vh - 5.5rem);
 }
 
-.sikasa-main .animate-page h1,
-.sikasa-main .animate-page h2,
-.sikasa-main .animate-page h3 {
-  color: var(--sikasa-ink);
+.siaga-main .animate-page h1,
+.siaga-main .animate-page h2,
+.siaga-main .animate-page h3 {
+  color: var(--siaga-ink);
   letter-spacing: -0.025em;
 }
 
-.sikasa-main .animate-page [class*="rounded-2xl"][class*="bg-white"],
-.sikasa-main .animate-page [class*="rounded-3xl"][class*="bg-white"],
-.sikasa-main .animate-page [class*="rounded-xl"][class*="bg-white"][class*="border"],
-.sikasa-main .animate-page [class*="rounded-[2rem]"][class*="bg-white"] {
-  border-color: var(--sikasa-line) !important;
+.siaga-main .animate-page [class*="rounded-2xl"][class*="bg-white"],
+.siaga-main .animate-page [class*="rounded-3xl"][class*="bg-white"],
+.siaga-main .animate-page [class*="rounded-xl"][class*="bg-white"][class*="border"],
+.siaga-main .animate-page [class*="rounded-[2rem]"][class*="bg-white"] {
+  border-color: var(--siaga-line) !important;
   box-shadow: 0 12px 32px rgb(89 71 10 / 5%);
 }
 
-.sikasa-main .animate-page [class*="bg-[#202126]"] {
+.siaga-main .animate-page [class*="bg-[#202126]"] {
   background-color: var(--feb-gold) !important;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-main .animate-page [class*="bg-[#f5cf25]"] {
-  background-color: var(--sikasa-lime) !important;
+.siaga-main .animate-page [class*="bg-[#f5cf25]"] {
+  background-color: var(--siaga-lime) !important;
 }
 
-.sikasa-main .animate-page input:not([type="checkbox"]):not([type="radio"]),
-.sikasa-main .animate-page select,
-.sikasa-main .animate-page textarea {
+.siaga-main .animate-page input:not([type="checkbox"]):not([type="radio"]),
+.siaga-main .animate-page select,
+.siaga-main .animate-page textarea {
   min-height: 44px;
   border-color: #e5dcc0 !important;
   border-radius: 12px !important;
@@ -424,7 +399,7 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
   color: #29271f !important;
 }
 
-.sikasa-main .animate-page select {
+.siaga-main .animate-page select {
   appearance: none;
   padding-right: 2.75rem !important;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23705700' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E") !important;
@@ -434,45 +409,45 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
   cursor: pointer;
 }
 
-.sikasa-main .animate-page select option {
+.siaga-main .animate-page select option {
   background: #fff;
   color: #29271f;
 }
 
-.sikasa-main .animate-page select:disabled {
+.siaga-main .animate-page select:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
-.sikasa-main .animate-page input:focus,
-.sikasa-main .animate-page select:focus,
-.sikasa-main .animate-page textarea:focus {
+.siaga-main .animate-page input:focus,
+.siaga-main .animate-page select:focus,
+.siaga-main .animate-page textarea:focus {
   border-color: #9a7600 !important;
   box-shadow: 0 0 0 3px rgb(242 196 0 / 22%);
 }
 
-.sikasa-main .animate-page table {
+.siaga-main .animate-page table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
 }
 
-.sikasa-main .animate-page thead th {
+.siaga-main .animate-page thead th {
   background: #fff8dd;
   color: #61511a;
   font-weight: 700;
 }
 
-.sikasa-main .animate-page th,
-.sikasa-main .animate-page td {
+.siaga-main .animate-page th,
+.siaga-main .animate-page td {
   border-color: #eee6cd !important;
 }
 
-.sikasa-main .animate-page tbody tr:hover {
+.siaga-main .animate-page tbody tr:hover {
   background-color: #fffcf1;
 }
 
-.sikasa-main .animate-page button {
+.siaga-main .animate-page button {
   touch-action: manipulation;
   transition:
     background-color 160ms ease,
@@ -482,74 +457,74 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
     transform 160ms ease;
 }
 
-.sikasa-main .animate-page button:active {
+.siaga-main .animate-page button:active {
   transform: translateY(1px);
 }
 
-.sikasa-workspace :focus-visible {
+.siaga-workspace :focus-visible {
   outline-color: #8a6900;
 }
 
 /* Warna aksen FEB: kuning emas untuk aksi, ikon dan sorotan. Teks pada
    permukaan emas memakai tinta gelap agar tetap terbaca dengan kontras tinggi. */
-.sikasa-workspace [class~="bg-emerald-700"],
-.sikasa-workspace [class~="bg-emerald-800"],
-.sikasa-workspace [class~="bg-emerald-600"],
-.sikasa-workspace [class~="bg-emerald-500"],
-.sikasa-workspace [class~="bg-sky-700"] {
+.siaga-workspace [class~="bg-emerald-700"],
+.siaga-workspace [class~="bg-emerald-800"],
+.siaga-workspace [class~="bg-emerald-600"],
+.siaga-workspace [class~="bg-emerald-500"],
+.siaga-workspace [class~="bg-sky-700"] {
   background-color: var(--feb-gold) !important;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-workspace [class~="bg-emerald-50"],
-.sikasa-workspace [class~="bg-emerald-50/40"],
-.sikasa-workspace [class~="bg-emerald-50/50"],
-.sikasa-workspace [class~="bg-emerald-100"],
-.sikasa-workspace [class~="bg-sky-50"],
-.sikasa-workspace [class~="bg-sky-50/40"] {
+.siaga-workspace [class~="bg-emerald-50"],
+.siaga-workspace [class~="bg-emerald-50/40"],
+.siaga-workspace [class~="bg-emerald-50/50"],
+.siaga-workspace [class~="bg-emerald-100"],
+.siaga-workspace [class~="bg-sky-50"],
+.siaga-workspace [class~="bg-sky-50/40"] {
   background-color: var(--feb-gold-soft) !important;
 }
 
-.sikasa-workspace [class~="text-emerald-700"],
-.sikasa-workspace [class~="text-emerald-800"],
-.sikasa-workspace [class~="text-emerald-900"],
-.sikasa-workspace [class~="text-emerald-600"],
-.sikasa-workspace [class~="text-sky-700"],
-.sikasa-workspace [class~="text-sky-800"] {
+.siaga-workspace [class~="text-emerald-700"],
+.siaga-workspace [class~="text-emerald-800"],
+.siaga-workspace [class~="text-emerald-900"],
+.siaga-workspace [class~="text-emerald-600"],
+.siaga-workspace [class~="text-sky-700"],
+.siaga-workspace [class~="text-sky-800"] {
   color: var(--feb-gold-text) !important;
 }
 
-.sikasa-workspace [class~="border-emerald-100"],
-.sikasa-workspace [class~="border-emerald-200"],
-.sikasa-workspace [class~="border-emerald-300"],
-.sikasa-workspace [class~="border-sky-200"] {
+.siaga-workspace [class~="border-emerald-100"],
+.siaga-workspace [class~="border-emerald-200"],
+.siaga-workspace [class~="border-emerald-300"],
+.siaga-workspace [class~="border-sky-200"] {
   border-color: var(--feb-gold-line) !important;
 }
 
-.sikasa-workspace [class~="hover:bg-emerald-800"]:hover,
-.sikasa-workspace [class~="hover:bg-emerald-700"]:hover,
-.sikasa-workspace [class~="hover:bg-emerald-100"]:hover {
+.siaga-workspace [class~="hover:bg-emerald-800"]:hover,
+.siaga-workspace [class~="hover:bg-emerald-700"]:hover,
+.siaga-workspace [class~="hover:bg-emerald-100"]:hover {
   background-color: #e4b800 !important;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-workspace [class*="bg-[#173a35]"] {
+.siaga-workspace [class*="bg-[#173a35]"] {
   background-color: var(--feb-gold) !important;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-workspace [class*="text-[#d9ef83]"] {
-  color: var(--sikasa-ink) !important;
+.siaga-workspace [class*="text-[#d9ef83]"] {
+  color: var(--siaga-ink) !important;
 }
 
-.sikasa-workspace [class*="hover:bg-[#244b45]"]:hover {
+.siaga-workspace [class*="hover:bg-[#244b45]"]:hover {
   background-color: #e4b800 !important;
-  color: var(--sikasa-ink) !important;
+  color: var(--siaga-ink) !important;
 }
 
 /* Ikon, avatar, dan indikator status memakai ukuran tetap di dalam baris flex.
    Tanpa ini, flex-shrink dapat membuat bentuk lingkaran tampak oval. */
-.sikasa-workspace [class*="size-"] {
+.siaga-workspace [class*="size-"] {
   flex-shrink: 0 !important;
 }
 
@@ -558,21 +533,21 @@ body:has(.sikasa-workspace)::-webkit-scrollbar-thumb:hover {
 }
 
 @media (max-width: 1023px) {
-  .sikasa-sidebar {
+  .siaga-sidebar {
     width: min(18rem, calc(100vw - 3rem)) !important;
   }
 
-  .sikasa-main {
+  .siaga-main {
     margin-left: 0 !important;
   }
 }
 
 @media (max-width: 640px) {
-  .sikasa-topbar {
+  .siaga-topbar {
     min-height: 4.5rem;
   }
 
-  .sikasa-page {
+  .siaga-page {
     padding-inline: 1rem;
   }
 }

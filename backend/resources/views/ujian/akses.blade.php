@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
     <meta name="referrer" content="no-referrer">
-    <title>Akses Soal Ujian · SIKASA</title>
+    <title>Akses Soal Ujian · SIAGA</title>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; background: #f4f5f7; color: #202126; font: 16px system-ui, sans-serif; }
@@ -26,7 +26,7 @@
 <main>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
         <div aria-hidden="true" style="display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#202126;color:#f5cf25;font-weight:900;font-size:20px">S</div>
-        <div><strong style="display:block;letter-spacing:.08em">SIKASA</strong><span class="meta">Sistem Informasi Keamanan Soal Akademik · FEB</span></div>
+        <div><strong style="display:block;letter-spacing:.08em">SIAGA</strong><span class="meta">Sistem Akademik Garda Aman · FEB</span></div>
     </div>
     <h1>Akses Soal Ujian</h1>
     @if ($error)
@@ -99,7 +99,7 @@
                     const body = await response.json().catch(() => ({}));
                     if (!response.ok) throw new Error(body.message || 'Verifikasi gagal.');
                     accessToken = body.access_token;
-                    watermark.textContent = body.nama + ' · NIM ' + body.nim + ' · SIKASA';
+                    watermark.textContent = body.nama + ' · NIM ' + body.nim + ' · SIAGA';
                     const pdfResponse = await fetch(pdfEndpoint, { method: 'POST', headers: { 'Accept': 'application/pdf', 'Authorization': 'Bearer ' + accessToken } });
                     if (!pdfResponse.ok) { const pdfError = await pdfResponse.json().catch(() => ({})); throw new Error(pdfError.message || 'PDF belum dapat dibuka.'); }
                     pdfUrl = URL.createObjectURL(await pdfResponse.blob());

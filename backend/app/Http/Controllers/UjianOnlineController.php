@@ -79,8 +79,8 @@ class UjianOnlineController extends Controller
                 'otp_attempts' => 0,
             ]);
             try {
-                Mail::raw("Kode verifikasi SIKASA Anda: {$otp}. Kode berlaku selama 5 menit. Jangan berikan kode ini kepada siapa pun.", function ($message) use ($peserta) {
-                    $message->to($peserta->email)->subject('Kode verifikasi akses soal SIKASA');
+                Mail::raw("Kode verifikasi SIAGA Anda: {$otp}. Kode berlaku selama 5 menit. Jangan berikan kode ini kepada siapa pun.", function ($message) use ($peserta) {
+                    $message->to($peserta->email)->subject('Kode verifikasi akses soal SIAGA');
                 });
             } catch (\Throwable) {
                 $peserta->update(['otp_hash' => null, 'otp_expires_at' => null]);

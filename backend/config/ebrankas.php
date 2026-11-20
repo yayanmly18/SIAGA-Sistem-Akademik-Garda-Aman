@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'frontend_url' => env('SIKASA_FRONTEND_URL', 'http://localhost:8443'),
+    'frontend_url' => env('SIAGA_FRONTEND_URL', 'http://localhost:8443'),
     /*
     |--------------------------------------------------------------------------
     | Konfigurasi Percetakan E-Brankas
