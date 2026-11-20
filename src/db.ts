@@ -610,6 +610,7 @@ export function toUiLog(api: ApiLog): LogAktivitas {
 export async function authenticate(
   email: string,
   password: string,
+  role: UserRole,
 ): Promise<User> {
   const res = await apiFetch<{
     token: string
@@ -617,7 +618,7 @@ export async function authenticate(
   }>("/login", {
     method: "POST",
 
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, role: toApiRole(role) }),
   })
 
   setToken(res.token)

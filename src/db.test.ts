@@ -361,7 +361,7 @@ describe("authenticate", () => {
         },
       })
 
-    const user = await authenticate("siti@feb.ac.id", "panitia123")
+    const user = await authenticate("siti@feb.ac.id", "panitia123", "panitia")
 
     assert.equal(calls.length, 1)
 
@@ -383,6 +383,8 @@ describe("authenticate", () => {
       email: "siti@feb.ac.id",
 
       password: "panitia123",
+
+      role: "panitia",
     })
 
     assert.equal(user.nama, "Siti")
@@ -403,7 +405,7 @@ describe("authenticate", () => {
       )
 
     await assert.rejects(
-      authenticate("x@feb.ac.id", "salah"),
+      authenticate("x@feb.ac.id", "salah", "panitia"),
 
       (err: unknown) => {
         assert.ok(err instanceof ApiError)
@@ -422,7 +424,7 @@ describe("authenticate", () => {
       throw new TypeError("fetch failed")
     }
 
-    await assert.rejects(authenticate("a@b.c", "x"), (err: unknown) => {
+    await assert.rejects(authenticate("a@b.c", "x", "panitia"), (err: unknown) => {
       assert.ok(err instanceof ApiError)
 
       assert.equal(err.status, 0)

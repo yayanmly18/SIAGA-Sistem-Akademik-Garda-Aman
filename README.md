@@ -118,3 +118,16 @@ Tidak ada temuan Critical yang terkonfirmasi pada pemeriksaan source ini. Severi
 ### Cakupan
 
 Audit meninjau autentikasi dan otorisasi role, alur OTP/peserta, upload dan penyimpanan PDF, token Sanctum, perubahan profil/password, manajemen pengguna, query database, serta route API/web terkait. Tidak diperiksa: konfigurasi `.env` aktif, database dan akun aktual, backup hasil produksi, server/proxy/TLS, email provider, browser/runtime, log, dependency dengan scanner, atau endpoint deployment.
+
+## Kesiapan production
+
+**Status: belum siap untuk production.** Source telah diperkeras, tetapi release harus ditahan sampai blocker berikut selesai dan dibuktikan di staging:
+
+1. Upgrade Laravel 10 ke versi yang masih menerima security fixes, lalu sesuaikan PHP dan dependency lock. Dukungan security Laravel 10 berakhir 4 Februari 2025 ([kebijakan dukungan resmi](https://laravel.com/docs/10.x/releases)).
+2. Siapkan `.env` production di secret manager/server, bukan Git: `APP_DEBUG=false`, `APP_KEY` kuat dan stabil, `APP_URL` HTTPS, CORS hanya origin frontend resmi, SMTP kampus, database dengan akun least-privilege, serta `EBRANKAS_BACKUP_PASSWORD` acak minimal 32 karakter. Jangan mengganti `APP_KEY` setelah file soal dan token terenkripsi dibuat tanpa rencana migrasi kunci.
+3. Verifikasi host mendukung ZipArchive AES-256, buat backup terenkripsi, lalu lakukan uji restore. Amankan/rotasi arsip lama yang belum terenkripsi. Pastikan ACL direktori backup, storage, dan log membatasi akses.
+4. Jalankan `composer audit`, pemeriksaan dependency frontend, test, typecheck, dan production build pada staging; uji alur role, OTP/email, upload PDF, token Sanctum, serta expiry. Belum ada hasil untuk pemeriksaan ini pada audit source-only.
+5. Jadwalkan `php artisan schedule:run` tiap menit; scheduler menangani penutupan sesi, backup harian, dan pembersihan token Sanctum kedaluwarsa. Gunakan cache bersama seperti Redis bila aplikasi berjalan pada lebih dari satu instance agar rate limit konsisten.
+6. Fitur cetak belum siap diaktifkan: frontend memanggil `/cetak/{id}`, tetapi endpoint belum terdaftar pada route API/web. Putuskan untuk menonaktifkannya pada rilis awal atau implementasikan dan uji route dengan middleware Panitia, rate limit PIN, audit log, dan kebijakan spool.
+
+Laravel merekomendasikan `APP_DEBUG=false` dan optimasi autoloader/config saat deployment ([panduan deployment resmi](https://laravel.com/docs/10.x/deployment)). Sanctum juga mendukung masa berlaku token dan pembersihan token kedaluwarsa ([dokumentasi Sanctum](https://laravel.com/docs/10.x/sanctum)).

@@ -18,6 +18,8 @@ class Kernel extends ConsoleKernel
         // Windows: jalankan `php artisan schedule:run` tiap menit via Task
         // Scheduler; Linux: cukup satu entri cron untuk schedule:run.
         $schedule->command('backup:run')->dailyAt('02:00')->withoutOverlapping();
+        // Bersihkan token Sanctum yang telah kedaluwarsa agar tabel token tidak terus membesar.
+        $schedule->command('sanctum:prune-expired --hours=24')->daily();
 
         // Tutup sesi secara persisten; API juga menolak akses tepat setelah waktu selesai.
         $schedule->call(function () {

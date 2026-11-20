@@ -20,11 +20,12 @@ class AuthController extends Controller
         $data = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            'role' => ['required', 'in:dosen,kaprodi,panitia,admin_it'],
         ]);
 
         $user = User::where('email', $data['email'])->first();
 
-        if (! $user || ! Hash::check($data['password'], $user->password)) {
+        if (! $user || ! Hash::check($data['password'], $user->password) || $user->role !== $data['role']) {
             ActivityLogger::log('login_gagal', ['email' => $data['email']], null);
 
             throw ValidationException::withMessages([

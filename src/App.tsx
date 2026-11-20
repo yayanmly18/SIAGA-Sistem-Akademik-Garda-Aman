@@ -387,7 +387,7 @@ interface DbContextValue {
   currentUser: User | null
   loading: boolean
   logs: LogRow[]
-  login: (email: string, password: string) => Promise<User>
+  login: (email: string, password: string, role: UserRole) => Promise<User>
   logout: () => Promise<void>
   upload: (input: UploadSoalInput) => Promise<BankSoal>
   uploadTemplate: (input: {
@@ -504,8 +504,8 @@ function DbProvider({ children }: { children: ReactNode }) {
       currentUser,
       loading,
       logs: toLogRows(db),
-      login: async (email, password) => {
-        const user = await authenticate(email, password)
+      login: async (email, password, role) => {
+        const user = await authenticate(email, password, role)
         setDb(await loadDatabase())
         return user
       },
@@ -1031,7 +1031,7 @@ const loginSlides: {
 function LoginPage({
   onLogin,
 }: {
-  onLogin: (email: string, password: string) => Promise<string | null>
+  onLogin: (email: string, password: string, role: UserRole) => Promise<string | null>
 }) {
   const [selectedRole, setSelectedRole] = useState<UserRole>("panitia")
   const [showPassword, setShowPassword] = useState(false)
@@ -1202,7 +1202,7 @@ function LoginPage({
                 setSubmitting(true)
                 setError("")
                 setCatatan("")
-                const message = await onLogin(email, password)
+                const message = await onLogin(email, password, selectedRole)
                 if (message) setError(message)
                 setSubmitting(false)
               }}
@@ -5442,9 +5442,9 @@ function AppShell() {
     return (
       <>
         <LoginPage
-          onLogin={async (email, password) => {
+          onLogin={async (email, password, role) => {
             try {
-              await login(email, password)
+              await login(email, password, role)
               setActive("Dashboard")
               return null
             } catch (error) {
